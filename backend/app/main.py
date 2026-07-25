@@ -8,9 +8,8 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import get_settings
 from app.ratelimit import limiter
-from app.routers import admin, auth, contestants, contests, entries, geo, media, payouts, payments, subscriptions, users, webhooks
+from app.routers import admin, auth, contestants, contests, entries, geo, media, partners, payouts, payments, subscriptions, users, webhooks
 from app.routers.media import MEDIA_DIR
-
 
 
 @asynccontextmanager
@@ -47,7 +46,15 @@ async def lifespan(app: FastAPI):
                 db.commit()
         finally:
             db.close()
+
+    # Start in-process APScheduler for ending contest reminders
+    from app.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
+
     yield
+
+    stop_scheduler()
+
 
 
 api_router = APIRouter(prefix="/api/v1")
@@ -68,14 +75,17 @@ api_router.include_router(subscriptions.router)
 api_router.include_router(entries.router)
 api_router.include_router(payments.router)
 api_router.include_router(payouts.router)
+api_router.include_router(partners.router)
 
 api_router.include_router(webhooks.router)
 api_router.include_router(geo.router)
 
 
+
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="CampusCrown API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="WhoIsHot API", version="0.1.0", lifespan=lifespan)
+
 
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
