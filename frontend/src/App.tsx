@@ -3,14 +3,17 @@ import { PublicLayout } from '@/components/PublicLayout'
 import Landing from '@/pages/Landing'
 import Login from '@/pages/Login'
 import Register from '@/pages/Register'
+import Verify from '@/pages/Verify'
 import Contest from '@/pages/Contest'
 import Board from '@/pages/Board'
 import ContestantProfile from '@/pages/ContestantProfile'
 import Join from '@/pages/Join'
 import Me from '@/pages/Me'
+import Opportunities from '@/pages/Opportunities'
 import SubscribeSuccess from '@/pages/SubscribeSuccess'
 import AdminLayout from '@/pages/admin/AdminLayout'
 import AdminOverview from '@/pages/admin/Overview'
+import AdminPartnerInquiries from '@/pages/admin/PartnerInquiries'
 import AdminReports from '@/pages/admin/Reports'
 import PaymentReviews from '@/pages/admin/PaymentReviews'
 import AdminIncome from '@/pages/admin/Income'
@@ -29,9 +32,12 @@ function App() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Landing />} />
+        <Route path="/opportunities" element={<Opportunities />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/verify" element={<Verify />} />
         <Route path="/contest/:joinCode" element={<Contest />} />
+
         <Route path="/contest/:joinCode/board" element={<Board />} />
         <Route path="/c/:contestantId" element={<ContestantProfile />} />
         <Route path="/join/:joinCode" element={<Join />} />
@@ -40,6 +46,7 @@ function App() {
       </Route>
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminOverview />} />
+        <Route path="partner-inquiries" element={<AdminPartnerInquiries />} />
         <Route path="reports" element={<AdminReports />} />
         <Route path="income" element={<AdminIncome />} />
         <Route path="payment-reviews" element={<PaymentReviews />} />
@@ -57,5 +64,6 @@ function App() {
     </Routes>
   )
 }
+
 
 export default App
