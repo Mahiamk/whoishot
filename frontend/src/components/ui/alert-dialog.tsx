@@ -58,7 +58,13 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "group/alert-dialog-content fixed z-50 grid w-full gap-4 bg-popover p-5 text-popover-foreground shadow-2xl ring-1 ring-foreground/10 duration-200 outline-none max-h-[90vh] overflow-y-auto",
+          "inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 rounded-t-3xl rounded-b-none border-t border-border/80",
+          "data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-bottom-full",
+          "data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-bottom-full",
+          "sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-md sm:rounded-3xl sm:border",
+          "sm:data-open:zoom-in-95 sm:data-open:slide-in-from-bottom-0",
+          "sm:data-closed:zoom-out-95 sm:data-closed:slide-out-to-bottom-0",
           className
         )}
         {...props}
