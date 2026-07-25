@@ -94,17 +94,19 @@ function MarkSentDialog({
               placeholder="e.g. TNG-9823412 or BANK-REF-001"
               value={providerRef}
               onChange={(e) => setProviderRef(e.target.value)}
+              className="h-11 text-base sm:text-sm rounded-xl"
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} className="h-11 min-h-[44px] px-4 rounded-xl font-medium">
             Cancel
           </Button>
           <Button
             disabled={!providerRef.trim() || markSentMutation.isPending}
             onClick={() => markSentMutation.mutate(payout.id)}
+            className="h-11 min-h-[44px] px-5 rounded-xl font-semibold"
           >
             {markSentMutation.isPending ? 'Saving…' : 'Mark as Sent'}
           </Button>
@@ -168,17 +170,19 @@ function MarkRefundDialog({
               placeholder="e.g. REF-TNG-9823412"
               value={providerRef}
               onChange={(e) => setProviderRef(e.target.value)}
+              className="h-11 text-base sm:text-sm rounded-xl"
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} className="h-11 min-h-[44px] px-4 rounded-xl font-medium">
             Cancel
           </Button>
           <Button
             disabled={!providerRef.trim() || markRefundMutation.isPending}
             onClick={() => markRefundMutation.mutate(refund.id)}
+            className="h-11 min-h-[44px] px-5 rounded-xl font-semibold"
           >
             {markRefundMutation.isPending ? 'Saving…' : 'Mark as Refunded'}
           </Button>
@@ -189,6 +193,7 @@ function MarkRefundDialog({
 }
 
 export default function AdminPayouts() {
+
   const [selectedPayout, setSelectedPayout] = useState<AdminPayoutItem | null>(null)
   const [selectedRefund, setSelectedRefund] = useState<AdminRefundItem | null>(null)
 
@@ -255,92 +260,140 @@ export default function AdminPayouts() {
                   No payouts found.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Contest</TableHead>
-                      <TableHead>Rank</TableHead>
-                      <TableHead>Winner / Recipient</TableHead>
-                      <TableHead>Payment Handle</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+
+                  {/* Desktop Table View */}
+                  <Table className="hidden md:table">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Contest</TableHead>
+                        <TableHead>Rank</TableHead>
+                        <TableHead>Winner / Recipient</TableHead>
+                        <TableHead>Payment Handle</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payouts.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium">{p.contest_title}</TableCell>
+                          <TableCell>
+                            <Badge variant={p.rank === '1' ? 'default' : 'outline'}>
+                              {p.rank === 'platform' ? 'Platform' : `${p.rank} Place`}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {p.contestant_name ? (
+                              <div>
+                                <div className="font-medium">{p.contestant_name}</div>
+                                <div className="text-xs text-muted-foreground">{p.user_email}</div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground italic">WhoIsHot Platform</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {p.payment_handle ? (
+                              <code className="bg-muted px-2 py-1 rounded text-xs">
+                                {p.payment_handle}
+                              </code>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            RM {(p.amount_cents / 100).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            {p.status === 'sent' ? (
+                              <Badge className="bg-emerald-500 hover:bg-emerald-600 gap-1">
+                                <CheckCircle className="size-3" /> Sent ({p.provider_ref})
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="gap-1">
+                                <Clock className="size-3" /> Pending
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {p.status === 'pending' ? (
+                              <Button
+                                size="sm"
+                                onClick={() => setSelectedPayout(p)}
+                              >
+                                Mark as Sent
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {p.provider_ref}
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Mobile Stacked Cards View */}
+                  <div className="space-y-3 md:hidden">
                     {payouts.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.contest_title}</TableCell>
-                        <TableCell>
-                          <Badge variant={p.rank === '1' ? 'default' : 'outline'}>
+                      <Card key={p.id} className="rounded-2xl border-border/70 p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="font-bold text-sm sm:text-base">{p.contest_title}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {p.contestant_name ? `${p.contestant_name} (${p.user_email})` : 'WhoIsHot Platform'}
+                            </p>
+                          </div>
+                          <Badge variant={p.rank === '1' ? 'default' : 'outline'} className="text-xs shrink-0">
                             {p.rank === 'platform' ? 'Platform' : `${p.rank} Place`}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {p.contestant_name ? (
+                        </div>
+                        <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs">
+                          <div>
+                            <span className="text-muted-foreground block text-[10px]">Amount</span>
+                            <span className="font-bold text-amber-500 text-sm">RM {(p.amount_cents / 100).toFixed(2)}</span>
+                          </div>
+                          {p.payment_handle && (
                             <div>
-                              <div className="font-medium">{p.contestant_name}</div>
-                              <div className="text-xs text-muted-foreground">{p.user_email}</div>
+                              <span className="text-muted-foreground block text-[10px]">Handle</span>
+                              <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono">{p.payment_handle}</code>
                             </div>
-                          ) : (
-                            <span className="text-muted-foreground italic">CampusCrown Platform</span>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          {p.payment_handle ? (
-                            <code className="bg-muted px-2 py-1 rounded text-xs">
-                              {p.payment_handle}
-                            </code>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          RM {(p.amount_cents / 100).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {p.status === 'sent' ? (
-                            <Badge className="bg-emerald-500 hover:bg-emerald-600 gap-1">
-                              <CheckCircle className="size-3" /> Sent ({p.provider_ref})
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="gap-1">
-                              <Clock className="size-3" /> Pending
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {p.status === 'pending' ? (
-                            <Button
-                              size="sm"
-                              onClick={() => setSelectedPayout(p)}
-                            >
-                              Mark as Sent
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground font-mono">
-                              {p.provider_ref}
-                            </span>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                          <div className="text-right">
+                            {p.status === 'pending' ? (
+                              <Button
+                                size="sm"
+                                onClick={() => setSelectedPayout(p)}
+                                className="h-10 min-h-[40px] px-3 font-semibold text-xs rounded-xl"
+                              >
+                                Mark as Sent
+                              </Button>
+                            ) : (
+                              <Badge className="bg-emerald-500 text-white text-[10px]">Sent</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="refunds" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending & Issued Refunds</CardTitle>
-              <CardDescription>
+          <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+            <CardHeader className="p-6 sm:p-8 pb-3 sm:pb-3 space-y-1">
+              <CardTitle className="text-xl font-bold tracking-tight">Pending & Issued Refunds</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 Entrants requiring refunds due to contest cancellation (&lt;5 entrants) or self-deletion.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6 sm:p-8 pt-0">
               {isLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-10 w-full" />
@@ -351,69 +404,116 @@ export default function AdminPayouts() {
                   No refunds pending.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Contest</TableHead>
-                      <TableHead>User Email</TableHead>
-                      <TableHead>Payment Handle</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {refunds.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-medium">{r.contest_title}</TableCell>
-                        <TableCell>{r.user_email}</TableCell>
-                        <TableCell>
-                          {r.payment_handle ? (
-                            <code className="bg-muted px-2 py-1 rounded text-xs">
-                              {r.payment_handle}
-                            </code>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          RM {(r.amount_cents / 100).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {r.status === 'refunded' ? (
-                            <Badge className="bg-emerald-500 hover:bg-emerald-600 gap-1">
-                              <CheckCircle className="size-3" /> Refunded
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive" className="gap-1">
-                              <Clock className="size-3" /> Refund Pending
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {r.status === 'refund_pending' ? (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => setSelectedRefund(r)}
-                            >
-                              Mark as Refunded
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground font-mono">
-                              {r.provider_ref}
-                            </span>
-                          )}
-                        </TableCell>
+                <>
+                  {/* Desktop Table View */}
+                  <Table className="hidden md:table">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Contest</TableHead>
+                        <TableHead>User Email</TableHead>
+                        <TableHead>Payment Handle</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
                       </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {refunds.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-medium">{r.contest_title}</TableCell>
+                          <TableCell>{r.user_email}</TableCell>
+                          <TableCell>
+                            {r.payment_handle ? (
+                              <code className="bg-muted px-2 py-1 rounded text-xs">
+                                {r.payment_handle}
+                              </code>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            RM {(r.amount_cents / 100).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            {r.status === 'refunded' ? (
+                              <Badge className="bg-emerald-500 hover:bg-emerald-600 gap-1">
+                                <CheckCircle className="size-3" /> Refunded
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="gap-1">
+                                <Clock className="size-3" /> Refund Pending
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {r.status === 'refund_pending' ? (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setSelectedRefund(r)}
+                              >
+                                Mark as Refunded
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {r.provider_ref}
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Mobile Stacked Card View */}
+                  <div className="space-y-3 md:hidden">
+                    {refunds.map((r) => (
+                      <Card key={r.id} className="rounded-2xl border-border/70 p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="font-bold text-sm sm:text-base">{r.contest_title}</h4>
+                            <p className="text-xs text-muted-foreground">{r.user_email}</p>
+                          </div>
+                          <Badge variant={r.status === 'refunded' ? 'secondary' : 'destructive'} className="text-xs shrink-0">
+                            {r.status === 'refunded' ? 'Refunded' : 'Pending'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs">
+                          <div>
+                            <span className="text-muted-foreground block text-[10px]">Amount</span>
+                            <span className="font-bold text-destructive text-sm">RM {(r.amount_cents / 100).toFixed(2)}</span>
+                          </div>
+                          {r.payment_handle && (
+                            <div>
+                              <span className="text-muted-foreground block text-[10px]">Handle</span>
+                              <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono">{r.payment_handle}</code>
+                            </div>
+                          )}
+                          <div className="text-right">
+                            {r.status === 'refund_pending' ? (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setSelectedRefund(r)}
+                                className="h-10 min-h-[40px] px-3 font-semibold text-xs rounded-xl"
+                              >
+                                Mark Refunded
+                              </Button>
+                            ) : (
+                              <span className="text-xs font-mono text-muted-foreground">{r.provider_ref}</span>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
 
       <MarkSentDialog
         payout={selectedPayout}
