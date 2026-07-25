@@ -17,10 +17,12 @@ export interface User {
   role: 'user' | 'admin'
   is_banned: boolean
   is_verified: boolean
+  email_opt_out?: boolean
   created_at: string
   country?: string | null
   detected_country?: string | null
 }
+
 
 interface AuthContextValue {
   user: User | null
