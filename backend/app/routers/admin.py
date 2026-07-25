@@ -19,6 +19,11 @@ from app.models import (
     EntryPaymentStatus,
     InfoRequest,
     InfoRequestStatus,
+    InquiryStatus,
+    InquiryType,
+    IntroductionStatus,
+    PartnerInquiry,
+    PartnerIntroduction,
     PaymentMethod,
     Rating,
     Report,
@@ -58,15 +63,20 @@ from app.schemas import (
     EmailDomainItem,
     IncomeItem,
     IncomeSummary,
-
     InfoRequestCreate,
+    OptedInContestantItem,
+    PartnerInquiryRead,
+    PartnerInquiryStatusUpdate,
+    PartnerIntroductionRead,
     PaymentApproveRequest,
     PaymentProviderStatusItem,
     PaymentRejectRequest,
     PaymentReviewItem,
+    ProposeIntroductionCreate,
     ResolveAction,
     ResolveRequest,
 )
+
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -264,19 +274,18 @@ def request_info(
     db.commit()
     db.refresh(info_request)
 
-    deadline_str = info_request.deadline_at.strftime("%B %-d, %Y")
-    frontend_url = get_settings().FRONTEND_URL.rstrip("/")
     send_email(
+        db=db,
         to=contestant.user.email,
-        subject="Action needed on your CampusCrown profile",
-        body=(
-            f"An admin has a question about your profile:\n\n"
-            f'"{payload.message}"\n\n'
-            f"Please respond by {deadline_str}, or your profile may be "
-            f"hidden pending review.\n\n"
-            f"Respond here: {frontend_url}/me\n"
-        ),
+        template_key="info_request",
+        context={
+            "contestant_name": contestant.name,
+            "message": payload.message,
+        },
+        user_id=contestant.user_id,
+        is_transactional_required=True,
     )
+
 
     return info_request
 
@@ -1400,6 +1409,258 @@ def get_admin_income_dashboard(
     )
 
     return AdminIncomeResponse(summary=summary, items=items)
+
+
+# --- Partner Inquiries & Introductions Admin Endpoints ---
+
+def _format_partner_introduction(intro: PartnerIntroduction) -> PartnerIntroductionRead:
+    res = PartnerIntroductionRead.model_validate(intro)
+    if intro.contestant:
+        res.contestant_name = intro.contestant.name
+        res.contestant_photo_url = intro.contestant.photo_url
+        if intro.contestant.contest:
+            res.contest_title = intro.contestant.contest.title
+    if intro.inquiry:
+        res.company_name = intro.inquiry.company_name
+        res.contact_name = intro.inquiry.contact_name
+        res.contact_email = intro.inquiry.email
+        res.contact_phone = intro.inquiry.phone
+        res.inquiry_type = intro.inquiry.inquiry_type.value
+        res.inquiry_message = intro.inquiry.message
+        res.inquiry_interested_in = intro.inquiry.interested_in
+    return res
+
+
+@router.get("/partner-inquiries", response_model=list[PartnerInquiryRead])
+def list_partner_inquiries(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> list[PartnerInquiryRead]:
+    inquiries = (
+        db.query(PartnerInquiry)
+        .options(
+            joinedload(PartnerInquiry.introductions)
+            .joinedload(PartnerIntroduction.contestant)
+            .joinedload(Contestant.contest)
+        )
+        .order_by(PartnerInquiry.id.desc())
+        .all()
+    )
+
+    results: list[PartnerInquiryRead] = []
+    for inquiry in inquiries:
+        read = PartnerInquiryRead.model_validate(inquiry)
+        read.introductions = [_format_partner_introduction(intro) for intro in inquiry.introductions]
+        results.append(read)
+    return results
+
+
+@router.patch("/partner-inquiries/{inquiry_id}/status", response_model=PartnerInquiryRead)
+def update_partner_inquiry_status(
+    inquiry_id: int,
+    payload: PartnerInquiryStatusUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> PartnerInquiryRead:
+    inquiry = db.get(PartnerInquiry, inquiry_id)
+    if inquiry is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Partner inquiry not found"
+        )
+
+    old_status = inquiry.status.value
+    inquiry.status = payload.status
+    audit(
+        db,
+        admin,
+        "partner_inquiry.update_status",
+        "partner_inquiry",
+        inquiry.id,
+        {"old_status": old_status, "new_status": payload.status.value},
+    )
+    db.commit()
+    db.refresh(inquiry)
+
+    read = PartnerInquiryRead.model_validate(inquiry)
+    read.introductions = [_format_partner_introduction(intro) for intro in inquiry.introductions]
+    return read
+
+
+@router.get("/opted-in-contestants", response_model=list[OptedInContestantItem])
+def list_opted_in_contestants(
+    q: str | None = Query(None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> list[OptedInContestantItem]:
+    query = (
+        db.query(Contestant)
+        .options(joinedload(Contestant.contest))
+        .filter(
+            Contestant.open_to_opportunities == True,
+            Contestant.status == ContestantStatus.active,
+        )
+    )
+
+    if q and q.strip():
+        term = f"%{q.strip().lower()}%"
+        query = query.filter(
+            or_(
+                func.lower(Contestant.name).like(term),
+                func.lower(Contestant.country).like(term),
+            )
+        )
+
+    contestants = query.order_by(Contestant.id.desc()).all()
+    results: list[OptedInContestantItem] = []
+    for c in contestants:
+        results.append(
+            OptedInContestantItem(
+                id=c.id,
+                name=c.name,
+                photo_url=c.photo_url,
+                gender_category=c.gender_category,
+                country=c.country,
+                contest_id=c.contest_id,
+                contest_title=c.contest.title if c.contest else "Contest",
+                open_to_opportunities=c.open_to_opportunities,
+            )
+        )
+    return results
+
+
+@router.post(
+    "/partner-inquiries/{inquiry_id}/propose-introduction",
+    response_model=PartnerIntroductionRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def propose_partner_introduction(
+    inquiry_id: int,
+    payload: ProposeIntroductionCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> PartnerIntroductionRead:
+    inquiry = db.get(PartnerInquiry, inquiry_id)
+    if inquiry is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Partner inquiry not found"
+        )
+
+    contestant = db.get(Contestant, payload.contestant_id)
+    if contestant is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Contestant not found"
+        )
+
+    # CRITICAL SPEC REQUIREMENT: Non-opted-in contestants CANNOT be proposed (403 Forbidden)
+    if not contestant.open_to_opportunities:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contestant has not opted in to opportunities",
+        )
+
+    from datetime import timedelta
+    intro = PartnerIntroduction(
+        inquiry_id=inquiry.id,
+        contestant_id=contestant.id,
+        admin_id=admin.id,
+        status=IntroductionStatus.pending_consent,
+        admin_note=payload.admin_note.strip() if payload.admin_note else None,
+        deadline_at=utcnow() + timedelta(days=14),
+    )
+    db.add(intro)
+    if inquiry.status == InquiryStatus.new:
+        inquiry.status = InquiryStatus.reviewing
+
+    db.flush()
+
+    audit(
+        db,
+        admin,
+        "partner_introduction.propose",
+        "partner_introduction",
+        intro.id,
+        {
+            "inquiry_id": inquiry.id,
+            "company_name": inquiry.company_name,
+            "contestant_id": contestant.id,
+            "contestant_name": contestant.name,
+        },
+    )
+
+    # Send email notification to contestant's user if present
+    if contestant.user and contestant.user.email:
+        send_email(
+            db=db,
+            to=contestant.user.email,
+            template_key="partner_introduction",
+            context={
+                "company_name": inquiry.company_name,
+                "inquiry_type": inquiry.inquiry_type.value,
+            },
+            user_id=contestant.user_id,
+            is_transactional_required=True,
+        )
+
+
+    db.commit()
+    db.refresh(intro)
+
+    return _format_partner_introduction(intro)
+
+
+@router.post(
+    "/partner-introductions/{intro_id}/mark-shared",
+    response_model=PartnerIntroductionRead,
+)
+def mark_partner_introduction_shared(
+    intro_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> PartnerIntroductionRead:
+    intro = (
+        db.query(PartnerIntroduction)
+        .options(
+            joinedload(PartnerIntroduction.contestant),
+            joinedload(PartnerIntroduction.inquiry),
+        )
+        .filter(PartnerIntroduction.id == intro_id)
+        .first()
+    )
+    if intro is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Partner introduction not found"
+        )
+
+    if intro.status != IntroductionStatus.accepted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Introduction must be accepted by contestant before sharing contact info",
+        )
+
+    intro.contact_info_shared = True
+    intro.shared_at = utcnow()
+
+    if intro.inquiry and intro.inquiry.status != InquiryStatus.closed:
+        intro.inquiry.status = InquiryStatus.matched
+
+    audit(
+        db,
+        admin,
+        "partner_introduction.mark_shared",
+        "partner_introduction",
+        intro.id,
+        {
+            "inquiry_id": intro.inquiry_id,
+            "contestant_id": intro.contestant_id,
+            "shared_at": intro.shared_at.isoformat() if intro.shared_at else None,
+        },
+    )
+
+    db.commit()
+    db.refresh(intro)
+
+    return _format_partner_introduction(intro)
+
 
 
 
