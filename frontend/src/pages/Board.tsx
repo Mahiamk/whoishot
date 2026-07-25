@@ -85,7 +85,7 @@ function initials(name: string): string {
     .toUpperCase()
 }
 
-const PODIUM_AVATAR = ['size-28', 'size-20', 'size-16'] // rank 1, 2, 3
+const PODIUM_AVATAR = ['size-20 sm:size-28', 'size-16 sm:size-20', 'size-14 sm:size-16'] // rank 1, 2, 3
 
 function PodiumSpot({
   entry,
@@ -99,31 +99,31 @@ function PodiumSpot({
   return (
     <Link
       to={`/c/${entry.contestant_id}`}
-      className="flex flex-col items-center gap-2"
+      className="flex flex-col items-center gap-1.5 sm:gap-2"
     >
-      {entry.rank === 1 && <Crown className="size-6 text-amber-500" />}
+      {entry.rank === 1 && <Crown className="size-5 sm:size-6 text-amber-500" />}
       <Avatar
-        className={`${PODIUM_AVATAR[entry.rank - 1]} border-4 ${
+        className={`${PODIUM_AVATAR[entry.rank - 1]} border-2 sm:border-4 ${
           isMe ? 'ring-4 ring-primary ring-offset-2 ring-offset-background' : ''
         }`}
         style={{ borderColor: color }}
       >
         {entry.photo_url && <AvatarImage src={entry.photo_url} alt={entry.name} />}
-        <AvatarFallback style={{ backgroundColor: color, color: 'white' }}>
+        <AvatarFallback style={{ backgroundColor: color, color: 'white' }} className="font-bold text-xs sm:text-base">
           {initials(entry.name)}
         </AvatarFallback>
       </Avatar>
       <Badge
-        className="size-6 justify-center rounded-full px-0 text-xs font-bold text-white"
+        className="size-5 sm:size-6 justify-center rounded-full px-0 text-[10px] sm:text-xs font-bold text-white"
         style={{ backgroundColor: color }}
       >
         {entry.rank}
       </Badge>
-      <span className="max-w-28 truncate text-sm font-medium">
+      <span className="max-w-24 sm:max-w-28 truncate text-xs sm:text-sm font-medium text-center">
         {entry.name}
-        {isMe && <span className="text-primary"> (you)</span>}
+        {isMe && <span className="text-primary font-bold"> (you)</span>}
       </span>
-      <Badge className="bg-amber-500 text-white hover:bg-amber-500">
+      <Badge className="bg-amber-500 text-white hover:bg-amber-500 text-[10px] sm:text-xs">
         {entry.avg_score.toFixed(2)}
       </Badge>
     </Link>
@@ -174,7 +174,7 @@ export default function Board() {
             <CardDescription>Sign in to see the leaderboard.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild className="w-full">
+            <Button asChild className="w-full h-11 min-h-[44px]">
               <Link to="/login">Sign in</Link>
             </Button>
           </CardContent>
@@ -192,41 +192,41 @@ export default function Board() {
       .sort((a, b) => [1, 0, 2][a.rank - 1] - [1, 0, 2][b.rank - 1]) ?? []
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
+    <main className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
       {showConfetti && <Confetti />}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           {board?.status === 'ended' ? 'Final results 🏆' : 'Leaderboard'}
         </h1>
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className="h-9 px-3 rounded-xl text-xs sm:text-sm font-semibold">
           <Link to={`/contest/${joinCode}`}>Back to contest</Link>
         </Button>
       </div>
 
-      <div className="mb-8 flex flex-wrap items-center gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <Tabs
           value={gender}
           onValueChange={(v) => setGender(v as Bracket)}
           className="flex-1"
         >
-          <TabsList className="w-full">
-            <TabsTrigger value="ALL" className="flex-1">
+          <TabsList className="w-full h-11 p-1 rounded-xl">
+            <TabsTrigger value="ALL" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
               <span
-                className="mr-2 inline-block size-2 rounded-full"
+                className="mr-1.5 inline-block size-2 rounded-full"
                 style={{ backgroundColor: GENERAL }}
               />
               General
             </TabsTrigger>
-            <TabsTrigger value="F" className="flex-1">
+            <TabsTrigger value="F" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
               <span
-                className="mr-2 inline-block size-2 rounded-full"
+                className="mr-1.5 inline-block size-2 rounded-full"
                 style={{ backgroundColor: FEMALE }}
               />
               Ladies
             </TabsTrigger>
-            <TabsTrigger value="M" className="flex-1">
+            <TabsTrigger value="M" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
               <span
-                className="mr-2 inline-block size-2 rounded-full"
+                className="mr-1.5 inline-block size-2 rounded-full"
                 style={{ backgroundColor: MALE }}
               />
               Gents
@@ -234,10 +234,10 @@ export default function Board() {
           </TabsList>
         </Tabs>
         <Select value={criterion} onValueChange={setCriterion}>
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-full sm:w-44 h-11 text-xs sm:text-sm rounded-xl">
             <SelectValue placeholder="Criterion" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl">
             <SelectItem value="overall">Overall</SelectItem>
             {CRITERIA.map((c) => (
               <SelectItem key={c} value={c} className="capitalize">
@@ -250,8 +250,8 @@ export default function Board() {
 
       {isLoading || !board ? (
         <>
-          <div className="mb-10 flex items-end justify-center gap-4 sm:gap-8">
-            {['size-20', 'size-28', 'size-16'].map((size, i) => (
+          <div className="mb-10 flex items-end justify-center gap-3 sm:gap-8">
+            {['size-16 sm:size-20', 'size-20 sm:size-28', 'size-14 sm:size-16'].map((size, i) => (
               <div key={i} className="flex flex-col items-center gap-2">
                 <Skeleton className={`${size} rounded-full`} />
                 <Skeleton className="h-4 w-16" />
@@ -261,7 +261,7 @@ export default function Board() {
           </div>
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="h-12 w-full" />
+              <Skeleton key={i} className="h-12 w-full rounded-xl" />
             ))}
           </div>
         </>
@@ -270,11 +270,11 @@ export default function Board() {
           {board.podium.length === 0 ? (
             <Card className="mb-6 rounded-2xl border-dashed">
               <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-                <p className="text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   No one has enough votes yet — contestants need at least 3
                   voters to be ranked.
                 </p>
-                <Button asChild>
+                <Button asChild className="h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl">
                   <Link to={`/contest/${joinCode}`}>
                     Browse contestants and rate them
                   </Link>
@@ -282,7 +282,7 @@ export default function Board() {
               </CardContent>
             </Card>
           ) : (
-            <div className="mb-10 flex items-end justify-center gap-4 sm:gap-8">
+            <div className="mb-10 flex items-end justify-center gap-2 sm:gap-8 pt-4">
               {podiumOrder.map((entry) => (
                 <PodiumSpot
                   key={entry.contestant_id}
@@ -293,6 +293,7 @@ export default function Board() {
               ))}
             </div>
           )}
+
 
           {me && me.rank != null && me.rank > 3 && (
             <Card className="mb-6 rounded-2xl border-primary">
