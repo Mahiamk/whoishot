@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from app.contest_expiry import check_contest_expiry
 from app.db import get_db
 from app.deps import get_current_user
+from app.email import send_email
 from app.ratelimit import RATING_LIMIT, limiter
+
 from app.models import (
     Contestant,
     ContestantStatus,
@@ -143,7 +145,24 @@ def join_contest(
     db.refresh(contestant)
     invalidate_leaderboard_cache(contest.id)
     generate_blurred_thumb(contestant.id, contestant.photo_url)
+
+    send_email(
+        db,
+        to=current_user.email,
+        template_key="contest_joined",
+        context={
+            "contest_title": contest.title,
+            "gender_category": contestant.gender_category.value,
+            "contest_join_code": contest.join_code,
+            "ends_at": contest.ends_at.strftime("%Y-%m-%d %H:%M UTC") if contest.ends_at else "",
+            "contest_id": contest.id,
+        },
+        user_id=current_user.id,
+        is_transactional_required=False,
+    )
+
     return contestant
+
 
 
 @router.patch("/contestants/{contestant_id}", response_model=ContestantRead)
@@ -337,6 +356,14 @@ def upsert_ratings(
             detail="This contest has ended — ratings are closed",
         )
 
+    is_first_vote_in_contest = (
+        db.query(Rating.id)
+        .join(Contestant, Rating.contestant_id == Contestant.id)
+        .filter(Rating.voter_id == current_user.id, Contestant.contest_id == contestant.contest_id)
+        .first()
+        is None
+    )
+
     existing = {
         r.criterion: r
         for r in db.query(Rating).filter(
@@ -358,6 +385,21 @@ def upsert_ratings(
             )
     db.commit()
     invalidate_leaderboard_cache(contestant.contest_id)
+
+    if is_first_vote_in_contest:
+        send_email(
+            db,
+            to=current_user.email,
+            template_key="contest_joined_voter",
+            context={
+                "contest_title": contestant.contest.title,
+                "contest_join_code": contestant.contest.join_code,
+                "contest_id": contestant.contest_id,
+            },
+            user_id=current_user.id,
+            is_transactional_required=False,
+        )
+
 
     return {
         r.criterion: r.score
