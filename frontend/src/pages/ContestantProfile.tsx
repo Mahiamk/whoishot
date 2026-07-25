@@ -312,7 +312,7 @@ export default function ContestantProfile() {
           variant="ghost"
           size="icon-sm"
           aria-label="Close profile"
-          className="absolute top-2 right-2"
+          className="absolute top-3 right-3 h-10 w-10 min-h-[44px] min-w-[44px] rounded-xl"
           onClick={() => navigate(-1)}
         >
           <X />
@@ -437,10 +437,10 @@ export default function ContestantProfile() {
       )}
 
       {!isOwnProfile && profile.contest_status === 'active' && (
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle>Rate {profile.name.split(' ')[0]}</CardTitle>
-            <CardDescription>
+        <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+          <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-4 space-y-1.5">
+            <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">Rate {profile.name.split(' ')[0]}</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Slide each criterion from 1 to 10, then lock in your scores.
               You can update them any time.
             </CardDescription>
@@ -451,54 +451,60 @@ export default function ContestantProfile() {
                 size="icon-sm"
                 aria-label="Cancel rating"
                 onClick={closeRatingPanel}
+                className="h-9 w-9 rounded-xl"
               >
-                <X />
+                <X className="size-4" />
               </Button>
             </CardAction>
           </CardHeader>
-          <CardContent className="space-y-5">
-            {CRITERIA.map((criterion) => (
-              <div key={criterion} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium capitalize">
-                    {criterion}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {profile.criterion_averages[criterion] != null && (
-                      <span className="text-xs text-muted-foreground">
-                        avg {profile.criterion_averages[criterion].toFixed(1)}
-                      </span>
-                    )}
-                    <Badge className="w-9 justify-center bg-amber-500 text-white hover:bg-amber-500">
-                      {scores[criterion]}
-                    </Badge>
-                  </span>
+          <CardContent className="p-6 sm:p-8 pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+              {CRITERIA.map((criterion) => (
+                <div key={criterion} className="space-y-2.5 p-3 rounded-2xl bg-muted/30 border border-border/40">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs sm:text-sm font-semibold capitalize text-foreground">
+                      {criterion}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {profile.criterion_averages[criterion] != null && (
+                        <span className="text-[11px] text-muted-foreground">
+                          avg {profile.criterion_averages[criterion].toFixed(1)}
+                        </span>
+                      )}
+                      <Badge className="w-8 h-6 justify-center bg-amber-500 text-white hover:bg-amber-500 font-bold text-xs">
+                        {scores[criterion]}
+                      </Badge>
+                    </span>
+                  </div>
+                  <div className="py-2 px-1">
+                    <Slider
+                      min={1}
+                      max={10}
+                      step={1}
+                      value={[scores[criterion]]}
+                      onValueChange={([v]) =>
+                        setScores((prev) => ({ ...prev!, [criterion]: v }))
+                      }
+                    />
+                  </div>
                 </div>
-                <Slider
-                  min={1}
-                  max={10}
-                  step={1}
-                  value={[scores[criterion]]}
-                  onValueChange={([v]) =>
-                    setScores((prev) => ({ ...prev!, [criterion]: v }))
-                  }
-                />
-              </div>
-            ))}
-            <Button
-              className="w-full"
-              onClick={() => rateMutation.mutate(scores)}
-              disabled={rateMutation.isPending}
-            >
-              {rateMutation.isPending
-                ? 'Saving…'
-                : hasRated
-                  ? 'Update my scores'
-                  : 'Lock in my scores'}
-            </Button>
+              ))}
+              <Button
+                className="col-span-1 sm:col-span-2 w-full h-11 min-h-[44px] text-sm font-semibold rounded-xl mt-3"
+                onClick={() => rateMutation.mutate(scores)}
+                disabled={rateMutation.isPending}
+              >
+                {rateMutation.isPending
+                  ? 'Saving…'
+                  : hasRated
+                    ? 'Update my scores'
+                    : 'Lock in my scores'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
+
 
       <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
         <AlertDialogContent size="sm">
