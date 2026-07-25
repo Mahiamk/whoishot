@@ -52,13 +52,13 @@ export default function Login() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm rounded-2xl">
-        <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Sign in to your whoishot account</CardDescription>
+    <main className="flex min-h-[calc(100vh-80px)] items-center justify-center p-4 py-8 sm:py-12">
+      <Card className="w-full max-w-md rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+        <CardHeader className="space-y-1.5 p-6 sm:p-8 pb-4 sm:pb-4">
+          <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
+          <CardDescription className="text-sm">Sign in to your WhoIsHot account</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 sm:p-8 pt-0">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -66,9 +66,9 @@ export default function Login() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-sm font-medium">Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="you@campus.edu" {...field} />
+                      <Input type="email" placeholder="you@campus.edu" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -79,9 +79,9 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="text-sm font-medium">Password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -89,7 +89,7 @@ export default function Login() {
               />
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-11 min-h-[44px] text-sm font-semibold rounded-xl mt-2"
                 disabled={form.formState.isSubmitting}
               >
                 {form.formState.isSubmitting ? 'Signing in…' : 'Sign in'}
@@ -97,9 +97,9 @@ export default function Login() {
             </form>
           </Form>
           <GoogleSignInButton />
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             No account?{' '}
-            <Link to="/register" className="text-primary hover:underline">
+            <Link to="/register" className="text-primary font-semibold hover:underline">
               Register
             </Link>
           </p>
@@ -108,3 +108,4 @@ export default function Login() {
     </main>
   )
 }
+
