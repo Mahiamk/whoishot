@@ -234,9 +234,10 @@ class BirrAdapter:
                         "callback_url": f"{settings.FRONTEND_URL.rstrip('/')}/api/v1/webhooks/birr",
                         "return_url": f"{settings.FRONTEND_URL.rstrip('/')}/subscribe/success?ref={provider_ref}&provider=birr",
                         "customization": {
-                            "title": "CampusCrown",
-                            "description": metadata.get("description", "CampusCrown Payment"),
+                            "title": "WhoIsHot",
+                            "description": metadata.get("description", "WhoIsHot Payment"),
                         },
+
                     },
                     timeout=10,
                 )
