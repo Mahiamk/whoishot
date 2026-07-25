@@ -1,4 +1,5 @@
-# CampusCrown
+# WhoIsHot
+
 
 Opt-in campus rating contests. See [SPEC.md](SPEC.md) for the full product spec.
 
@@ -27,7 +28,8 @@ variable with dev + production guidance; copy it to `.env` and edit.
 
 | Variable       | Default                      | Notes                                          |
 | -------------- | ----------------------------- | ----------------------------------------------- |
-| `DATABASE_URL` | `sqlite:///./campuscrown.db`  | Postgres in production (`postgresql://...`)     |
+| `DATABASE_URL` | `sqlite:///./whoishot.db`  | Postgres in production (`postgresql://...`)     |
+
 | `JWT_SECRET`   | `change-me-in-production`     | Long random value in production — signs auth tokens |
 | `CORS_ORIGINS` | `http://localhost:5173`       | Comma-separated allowed origins                 |
 | `FRONTEND_URL` | `http://localhost:5173`       | Used to build links in emails                   |
