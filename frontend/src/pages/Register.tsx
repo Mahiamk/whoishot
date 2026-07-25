@@ -145,13 +145,13 @@ export default function Register() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm rounded-2xl">
-        <CardHeader>
-          <CardTitle>Create account</CardTitle>
-          <CardDescription>Join whoishot in a minute</CardDescription>
+    <main className="flex min-h-[calc(100vh-80px)] items-center justify-center p-4 py-8 sm:py-12">
+      <Card className="w-full max-w-md rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+        <CardHeader className="space-y-1.5 p-6 sm:p-8 pb-4 sm:pb-4">
+          <CardTitle className="text-2xl font-bold tracking-tight">Create account</CardTitle>
+          <CardDescription className="text-sm">Join WhoIsHot in a minute</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 sm:p-8 pt-0">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -159,9 +159,9 @@ export default function Register() {
                 name="display_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Display name</FormLabel>
+                    <FormLabel className="text-sm font-medium">Display name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your name" {...field} />
+                      <Input placeholder="Your name" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -172,37 +172,37 @@ export default function Register() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-sm font-medium">Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="you@campus.edu" {...field} />
+                      <Input type="email" placeholder="you@campus.edu" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                     {emailLooksValid && email === debouncedEmail && (
                       <>
                         {checkingEmail ? (
-                          <Alert className="border-amber-500/40 py-2 text-amber-600 dark:text-amber-400">
+                          <Alert className="border-amber-500/40 py-2 text-amber-600 dark:text-amber-400 rounded-xl">
                             <Loader2 className="size-4 animate-spin" />
-                            <AlertDescription className="text-current">
+                            <AlertDescription className="text-current text-xs">
                               Checking…
                             </AlertDescription>
                           </Alert>
                         ) : emailCheck?.allowed ? (
-                          <Alert className="border-green-500/40 py-2 text-green-600 dark:text-green-400">
+                          <Alert className="border-green-500/40 py-2 text-green-600 dark:text-green-400 rounded-xl">
                             <CheckCircle2 className="size-4" />
-                            <AlertDescription className="text-current">
+                            <AlertDescription className="text-current text-xs">
                               University email ✓
                             </AlertDescription>
                           </Alert>
                         ) : emailCheck && !emailCheck.allowed ? (
-                          <Alert className="border-destructive/40 py-2 text-destructive">
+                          <Alert className="border-destructive/40 py-2 text-destructive rounded-xl">
                             <XCircle className="size-4" />
-                            <AlertDescription className="text-current">
+                            <AlertDescription className="text-current text-xs">
                               Please use your university email (e.g.
                               you@student.youruni.edu.my).{' '}
                               <button
                                 type="button"
                                 onClick={() => setRequestDialogOpen(true)}
-                                className="font-medium underline underline-offset-2"
+                                className="font-semibold underline underline-offset-2"
                               >
                                 My university isn't recognized
                               </button>
@@ -219,9 +219,9 @@ export default function Register() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="text-sm font-medium">Password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -232,20 +232,20 @@ export default function Register() {
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender</FormLabel>
+                    <FormLabel className="text-sm font-medium">Gender</FormLabel>
                     <FormControl>
                       <Tabs value={field.value} onValueChange={field.onChange}>
-                        <TabsList className="w-full">
-                          <TabsTrigger value="F" className="flex-1">
+                        <TabsList className="w-full h-11 p-1 rounded-xl">
+                          <TabsTrigger value="F" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                             <span
-                              className="mr-2 inline-block size-2 rounded-full"
+                              className="mr-1.5 inline-block size-2 rounded-full"
                               style={{ backgroundColor: FEMALE }}
                             />
                             Female
                           </TabsTrigger>
-                          <TabsTrigger value="M" className="flex-1">
+                          <TabsTrigger value="M" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                             <span
-                              className="mr-2 inline-block size-2 rounded-full"
+                              className="mr-1.5 inline-block size-2 rounded-full"
                               style={{ backgroundColor: MALE }}
                             />
                             Male
@@ -259,7 +259,7 @@ export default function Register() {
               />
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-11 min-h-[44px] text-sm font-semibold rounded-xl mt-2"
                 disabled={form.formState.isSubmitting || !allowed}
               >
                 {form.formState.isSubmitting ? 'Creating…' : 'Create account'}
@@ -267,9 +267,9 @@ export default function Register() {
             </form>
           </Form>
           <GoogleSignInButton />
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary hover:underline">
+            <Link to="/login" className="text-primary font-semibold hover:underline">
               Sign in
             </Link>
           </p>
@@ -283,3 +283,4 @@ export default function Register() {
     </main>
   )
 }
+
