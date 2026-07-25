@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Check, DollarSign, Download, ExternalLink, Eye, FileText, Filter, Globe, RotateCw, Wallet, X } from 'lucide-react'
+import { DollarSign, Download, ExternalLink, Eye, FileText, Filter, Globe, Wallet } from 'lucide-react'
+
+
+
 
 import { toast } from 'sonner'
 
@@ -157,18 +160,8 @@ export default function PaymentReviews() {
       toast.error(err instanceof Error ? err.message : 'Could not approve payment'),
   })
 
-  const retryMutation = useMutation({
-    mutationFn: ({ type, id }: { type: string; id: number }) =>
-      api(`/admin/payment-reviews/${type}/${id}/retry`, { method: 'POST' }),
-    onSuccess: () => {
-      toast.success('Receipt verification retried')
-      queryClient.invalidateQueries({ queryKey: ['admin-payment-reviews'] })
-    },
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : 'Retry failed'),
-  })
-
   const rejectMutation = useMutation({
+
     mutationFn: ({ type, id, reason, note }: { type: string; id: number; reason: string; note?: string }) =>
       api(`/admin/payment-reviews/${type}/${id}/reject`, {
         method: 'POST',
@@ -374,8 +367,9 @@ export default function PaymentReviews() {
                       No income records logged yet.
                     </p>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
+                    <>
+                      {/* Desktop Table View */}
+                      <Table className="hidden md:table">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Date</TableHead>
@@ -424,7 +418,28 @@ export default function PaymentReviews() {
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
+
+                      {/* Mobile Stacked Card View */}
+                      <div className="space-y-3 md:hidden">
+                        {incomeData.items.map((item) => (
+                          <Card key={`${item.type}-${item.id}`} className="rounded-2xl border-border/70 p-4 space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="font-bold text-sm">{item.user_name}</div>
+                                <div className="text-xs text-muted-foreground">{item.user_email}</div>
+                              </div>
+                              <span className="font-bold text-sm text-emerald-600">RM {(item.amount_cents / 100).toFixed(2)}</span>
+                            </div>
+                            <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs">
+                              <Badge variant="outline" className="text-[10px]">
+                                {item.type === 'subscription' ? 'Social Subscription' : 'Entry Fee'}
+                              </Badge>
+                              <span className="font-mono text-[10px] text-muted-foreground">{item.provider_ref}</span>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -432,14 +447,14 @@ export default function PaymentReviews() {
           ) : null}
         </div>
       ) : (
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-lg">Submissions Queue</CardTitle>
-            <CardDescription>
+        <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+          <CardHeader className="p-6 sm:p-8 pb-3 sm:pb-3 space-y-1">
+            <CardTitle className="text-xl font-bold tracking-tight">Submissions Queue</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Review automated receipt verification results (v.odit.et) or manually approve / reject payments.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 sm:p-8 pt-0">
             {isLoading ? (
               <div className="space-y-3">
                 {[0, 1, 2].map((i) => (
@@ -451,8 +466,9 @@ export default function PaymentReviews() {
                 No payment submissions found in this view.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
+              <>
+                {/* Desktop Table View */}
+                <Table className="hidden md:table">
                   <TableHeader>
                     <TableRow>
                       <TableHead>User</TableHead>
@@ -521,7 +537,6 @@ export default function PaymentReviews() {
                           {!item.verify_status && (
                             <span className="text-xs text-muted-foreground">Needs Manual Review</span>
                           )}
-
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -548,80 +563,118 @@ export default function PaymentReviews() {
                                 </Button>
                               </>
                             ) : (
-                              <span className="text-xs text-muted-foreground">No file</span>
-                            )}
-                            {item.is_duplicate_hash && (
-                              <Badge variant="destructive" className="gap-1 text-[10px]">
-                                <AlertTriangle className="size-3" /> Duplicate
-                              </Badge>
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
                           {item.status === 'awaiting_review' && (
-                            <Badge className="bg-amber-500 text-white hover:bg-amber-500">Awaiting Review</Badge>
+                            <Badge className="bg-amber-500 text-white font-semibold">Awaiting Review</Badge>
                           )}
                           {item.status === 'paid' && (
-                            <Badge className="bg-green-600 text-white hover:bg-green-600">Approved</Badge>
+                            <Badge className="bg-emerald-500 text-white font-semibold">Approved</Badge>
                           )}
                           {item.status === 'rejected' && (
-                            <Badge className="bg-destructive text-white">Rejected</Badge>
+                            <Badge variant="destructive" className="font-semibold">Rejected</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {item.status === 'awaiting_review' && (
-                            <div className="flex justify-end gap-1.5">
-                              {(item.verify_status === 'fetch_failed' || item.verify_status === 'error') && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 gap-1 text-xs"
-                                  disabled={retryMutation.isPending}
-                                  onClick={() => retryMutation.mutate({ type: item.type, id: item.id })}
-                                >
-                                  <RotateCw className="size-3.5" /> Retry
-                                </Button>
-                              )}
+                          {item.status === 'awaiting_review' ? (
+                            <div className="flex items-center justify-end gap-2">
                               <Button
                                 size="sm"
-                                className="h-8 bg-green-600 hover:bg-green-700 text-white gap-1 text-xs"
-                                disabled={approveMutation.isPending}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs font-semibold px-3 rounded-lg"
                                 onClick={() => {
                                   setApprovingItem(item)
-                                  setApproveAmountRM(((item.verify_amount || item.amount) / 100).toFixed(2))
+                                  setApproveAmountRM((item.amount / 100).toFixed(2))
                                 }}
                               >
-                                <Check className="size-3.5" /> Approve
+                                Approve
                               </Button>
                               <Button
-                                variant="destructive"
                                 size="sm"
-                                className="h-8 gap-1 text-xs"
-                                onClick={() => {
-                                  setRejectingItem(item)
-                                  setRejectReason('duplicate_receipt')
-                                  setRejectNote('')
-                                }}
+                                variant="destructive"
+                                className="h-8 text-xs font-semibold px-3 rounded-lg"
+                                onClick={() => setRejectingItem(item)}
                               >
-                                <X className="size-3.5" /> Reject
+                                Reject
                               </Button>
                             </div>
-                          )}
-                          {item.status === 'rejected' && item.review_note && (
-                            <p className="text-xs text-muted-foreground truncate max-w-[180px]" title={item.review_note}>
-                              Reason: {item.review_note}
-                            </p>
+                          ) : (
+                            <span className="text-xs text-muted-foreground font-mono">
+                              {item.reviewed_by_email ? `By ${item.reviewed_by_email.split('@')[0]}` : 'Done'}
+                            </span>
                           )}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+
+                {/* Mobile Stacked Card View */}
+                <div className="space-y-3 md:hidden">
+                  {items.map((item) => (
+                    <Card key={`${item.type}-${item.id}`} className="rounded-2xl border-border/70 p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-bold text-sm">{item.user_name}</div>
+                          <div className="text-xs text-muted-foreground">{item.user_email}</div>
+                          <Badge variant="outline" className="capitalize text-[10px] mt-1">
+                            {item.type === 'subscription' ? 'Social Subscription' : 'Entry Fee'}
+                          </Badge>
+                        </div>
+                        <Badge className={`text-xs ${item.status === 'paid' ? 'bg-emerald-500 text-white' : item.status === 'rejected' ? 'bg-destructive text-white' : 'bg-amber-500 text-white'}`}>
+                          {item.status === 'awaiting_review' ? 'Review Needed' : item.status}
+                        </Badge>
+
+                      </div>
+                      <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground block text-[10px]">Ref / Amount</span>
+                          <span className="font-mono font-semibold">{item.provider_ref} · RM {(item.amount / 100).toFixed(2)}</span>
+                        </div>
+                        {item.receipt_url && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 px-3 text-xs font-semibold rounded-xl"
+                            onClick={() => setPreviewUrl(mediaUrl(item.receipt_url))}
+                          >
+                            <Eye className="size-3.5 mr-1" /> View Receipt
+                          </Button>
+                        )}
+                      </div>
+                      {item.status === 'awaiting_review' && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                          <Button
+                            size="sm"
+                            className="flex-1 h-10 font-semibold bg-emerald-600 text-white rounded-xl"
+                            onClick={() => {
+                              setApprovingItem(item)
+                              setApproveAmountRM((item.amount / 100).toFixed(2))
+                            }}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="flex-1 h-10 font-semibold rounded-xl"
+                            onClick={() => setRejectingItem(item)}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
       )}
+
 
       {/* Full-size Receipt View Modal */}
       <Dialog open={!!previewUrl} onOpenChange={(open) => !open && setPreviewUrl(null)}>
@@ -694,19 +747,20 @@ export default function PaymentReviews() {
                   min="0.01"
                   value={approveAmountRM}
                   onChange={(e) => setApproveAmountRM(e.target.value)}
+                  className="h-11 text-base sm:text-sm rounded-xl"
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[11px] sm:text-xs text-muted-foreground">
                 You can adjust this if the user transferred a different amount. This will be recorded as platform revenue.
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setApprovingItem(null)}>
+            <Button variant="outline" onClick={() => setApprovingItem(null)} className="h-11 min-h-[44px] px-4 rounded-xl font-medium">
               Cancel
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="h-11 min-h-[44px] px-5 rounded-xl font-semibold bg-green-600 hover:bg-green-700 text-white"
               disabled={approveMutation.isPending}
               onClick={handleApproveSubmit}
             >
@@ -731,7 +785,7 @@ export default function PaymentReviews() {
               <select
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-xs font-medium"
+                className="w-full h-11 rounded-xl border bg-background px-3 py-2 text-base sm:text-sm font-medium"
               >
                 {REJECTION_REASONS.map((r) => (
                   <option key={r.value} value={r.value}>
@@ -748,23 +802,26 @@ export default function PaymentReviews() {
                 value={rejectNote}
                 onChange={(e) => setRejectNote(e.target.value)}
                 rows={3}
+                className="text-base sm:text-sm rounded-xl p-3"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectingItem(null)}>
+            <Button variant="outline" onClick={() => setRejectingItem(null)} className="h-11 min-h-[44px] px-4 rounded-xl font-medium">
               Cancel
             </Button>
             <Button
               variant="destructive"
               disabled={rejectMutation.isPending}
               onClick={handleRejectSubmit}
+              className="h-11 min-h-[44px] px-5 rounded-xl font-semibold"
             >
               {rejectMutation.isPending ? 'Rejecting…' : 'Reject Submission'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   )
 }
