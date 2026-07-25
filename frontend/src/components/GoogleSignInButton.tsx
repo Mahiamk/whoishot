@@ -206,15 +206,15 @@ export function GoogleSignInButton() {
             value={gender}
             onValueChange={(v) => setGender(v as 'F' | 'M')}
           >
-            <TabsList className="w-full">
-              <TabsTrigger value="F" className="flex-1">
+            <TabsList className="w-full h-11">
+              <TabsTrigger value="F" className="flex-1 h-11 rounded-xl font-medium">
                 <span
                   className="mr-2 inline-block size-2 rounded-full"
                   style={{ backgroundColor: FEMALE }}
                 />
                 Female
               </TabsTrigger>
-              <TabsTrigger value="M" className="flex-1">
+              <TabsTrigger value="M" className="flex-1 h-11 rounded-xl font-medium">
                 <span
                   className="mr-2 inline-block size-2 rounded-full"
                   style={{ backgroundColor: MALE }}
@@ -225,13 +225,14 @@ export function GoogleSignInButton() {
           </Tabs>
           <DialogFooter>
             <Button
-              className="w-full"
+              className="w-full h-11 min-h-[44px] rounded-xl font-semibold"
               disabled={!gender || submitting}
               onClick={completeSignUp}
             >
               {submitting ? 'Creating account…' : 'Continue'}
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </>
