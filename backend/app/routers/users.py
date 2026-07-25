@@ -12,6 +12,9 @@ from app.models import (
     EntryPayment,
     InfoRequest,
     InfoRequestStatus,
+    IntroductionStatus,
+    PartnerInquiry,
+    PartnerIntroduction,
     PaymentMethod,
     Report,
     Subscription,
@@ -21,8 +24,10 @@ from app.models import (
 from app.routers.contests import rank_in_bracket
 from app.schemas import (
     InfoRequestRespond,
+    IntroductionRespond,
     MyContestantEntry,
     MyInfoRequestItem,
+    PartnerIntroductionRead,
     PasswordChange,
     UserPaymentItem,
     UserRead,
@@ -279,4 +284,149 @@ def get_my_payments(
 
     items.sort(key=lambda x: x.created_at, reverse=True)
     return items
+
+
+# --- User Partner Introductions ---
+
+def _format_partner_introduction(intro: PartnerIntroduction) -> PartnerIntroductionRead:
+    res = PartnerIntroductionRead.model_validate(intro)
+    if intro.contestant:
+        res.contestant_name = intro.contestant.name
+        res.contestant_photo_url = intro.contestant.photo_url
+        if intro.contestant.contest:
+            res.contest_title = intro.contestant.contest.title
+    if intro.inquiry:
+        res.company_name = intro.inquiry.company_name
+        res.contact_name = intro.inquiry.contact_name
+        res.contact_email = intro.inquiry.email
+        res.contact_phone = intro.inquiry.phone
+        res.inquiry_type = intro.inquiry.inquiry_type.value
+        res.inquiry_message = intro.inquiry.message
+        res.inquiry_interested_in = intro.inquiry.interested_in
+    return res
+
+
+@router.get("/me/introductions", response_model=list[PartnerIntroductionRead])
+def get_my_introductions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[PartnerIntroductionRead]:
+    contestant_ids = [
+        c.id for c in db.query(Contestant.id).filter(Contestant.user_id == current_user.id).all()
+    ]
+    if not contestant_ids:
+        return []
+
+    intros = (
+        db.query(PartnerIntroduction)
+        .options(
+            joinedload(PartnerIntroduction.contestant).joinedload(Contestant.contest),
+            joinedload(PartnerIntroduction.inquiry),
+        )
+        .filter(PartnerIntroduction.contestant_id.in_(contestant_ids))
+        .order_by(PartnerIntroduction.id.desc())
+        .all()
+    )
+
+    from datetime import timezone
+    now = utcnow()
+    updated = False
+    for intro in intros:
+        if intro.status == IntroductionStatus.pending_consent:
+            deadline = intro.deadline_at
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            if now > deadline:
+                intro.status = IntroductionStatus.expired
+                audit(
+                    db,
+                    None,
+                    "partner_introduction.expire",
+                    "partner_introduction",
+                    intro.id,
+                    {"reason": "deadline_passed"},
+                )
+                updated = True
+
+    if updated:
+        db.commit()
+
+    return [_format_partner_introduction(intro) for intro in intros]
+
+
+@router.post("/me/introductions/{intro_id}/respond", response_model=PartnerIntroductionRead)
+def respond_partner_introduction(
+    intro_id: int,
+    payload: IntroductionRespond,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PartnerIntroductionRead:
+    contestant_ids = [
+        c.id for c in db.query(Contestant.id).filter(Contestant.user_id == current_user.id).all()
+    ]
+    intro = (
+        db.query(PartnerIntroduction)
+        .options(
+            joinedload(PartnerIntroduction.contestant).joinedload(Contestant.contest),
+            joinedload(PartnerIntroduction.inquiry),
+        )
+        .filter(
+            PartnerIntroduction.id == intro_id,
+            PartnerIntroduction.contestant_id.in_(contestant_ids),
+        )
+        .first()
+    )
+    if intro is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Introduction not found or not owned by your contestant profile",
+        )
+
+    from datetime import timezone
+    now = utcnow()
+    deadline = intro.deadline_at
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=timezone.utc)
+
+    if intro.status == IntroductionStatus.pending_consent and now > deadline:
+        intro.status = IntroductionStatus.expired
+        audit(
+            db,
+            None,
+            "partner_introduction.expire",
+            "partner_introduction",
+            intro.id,
+            {"reason": "deadline_passed"},
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Introduction proposal has expired",
+        )
+
+    if intro.status != IntroductionStatus.pending_consent:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Introduction is no longer pending",
+        )
+
+    if payload.action == "accept":
+        intro.status = IntroductionStatus.accepted
+    else:
+        intro.status = IntroductionStatus.declined
+
+    intro.responded_at = now
+    audit(
+        db,
+        None,
+        "partner_introduction.respond",
+        "partner_introduction",
+        intro.id,
+        {"action": payload.action, "user_id": current_user.id},
+    )
+    db.commit()
+    db.refresh(intro)
+
+    return _format_partner_introduction(intro)
+
 
