@@ -131,7 +131,9 @@ function UserRow({ user }: { user: AdminUserItem }) {
 }
 
 export default function Users() {
+  const queryClient = useQueryClient()
   const [searchInput, setSearchInput] = useState('')
+
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
@@ -160,8 +162,9 @@ export default function Users() {
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
         placeholder="Search by email or name…"
-        className="mb-4 max-w-sm"
+        className="mb-4 max-w-sm h-11 text-base sm:text-sm rounded-xl"
       />
+
 
       {isLoading && (
         <div className="space-y-2">
@@ -189,7 +192,8 @@ export default function Users() {
 
       {data && data.items.length > 0 && (
         <>
-          <Table>
+          {/* Desktop Table View */}
+          <Table className="hidden md:table">
             <TableHeader>
               <TableRow>
                 <TableHead>Email</TableHead>
@@ -206,16 +210,68 @@ export default function Users() {
               ))}
             </TableBody>
           </Table>
-          <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+
+          {/* Mobile Stacked Card View */}
+          <div className="space-y-3 md:hidden">
+            {data.items.map((u) => (
+              <Card key={u.id} className="rounded-2xl border-border/70 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <Link to={`/admin/users/${u.id}`} className="font-bold text-sm sm:text-base text-primary hover:underline block">
+                      {u.email}
+                    </Link>
+                    <p className="text-xs text-foreground font-medium">{u.display_name}</p>
+                  </div>
+                  <Badge style={{ backgroundColor: bracketColor(u.gender), color: 'white' }} className="text-xs font-semibold">
+                    {u.gender}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    {u.is_banned ? (
+                      <Badge className="bg-destructive text-white text-[10px]">Banned</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px]">Active</Badge>
+                    )}
+                    {u.role === 'admin' && (
+                      <Badge variant="outline" className="text-[10px]">Admin</Badge>
+                    )}
+                    <span className="text-muted-foreground text-[11px]">
+                      Joined {new Date(u.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={u.is_banned ? 'outline' : 'destructive'}
+                    disabled={u.role === 'admin'}
+                    className="h-11 min-h-[44px] px-4 font-semibold text-xs rounded-xl"
+                    onClick={() => {
+                      api(`/admin/users/${u.id}/${u.is_banned ? 'unban' : 'ban'}`, { method: 'POST' })
+                        .then(() => {
+                          toast.success(u.is_banned ? `${u.email} unbanned` : `${u.email} banned`)
+                          queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+                        })
+                        .catch((err) => toast.error(err instanceof Error ? err.message : 'Could not update user'))
+                    }}
+                  >
+                    {u.is_banned ? 'Unban' : 'Ban'}
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>
               Page {data.page} of {totalPages} · {data.total} total
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
+                className="h-11 min-h-[44px] px-4 font-medium rounded-xl flex-1 sm:flex-none"
               >
                 Previous
               </Button>
@@ -224,13 +280,16 @@ export default function Users() {
                 size="sm"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
+                className="h-11 min-h-[44px] px-4 font-medium rounded-xl flex-1 sm:flex-none"
               >
                 Next
               </Button>
             </div>
           </div>
+
         </>
       )}
+
     </div>
   )
 }
