@@ -69,7 +69,7 @@ function AddDomainDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">Add domain rule</Button>
+        <Button className="h-11 min-h-[44px] px-4 rounded-xl font-semibold text-sm">Add domain rule</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
@@ -88,15 +88,16 @@ function AddDomainDialog() {
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               placeholder="student.example.edu"
+              className="h-11 text-base sm:text-sm rounded-xl"
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="domain-kind">Rule</Label>
             <Select value={kind} onValueChange={(v) => setKind(v as DomainKind)}>
-              <SelectTrigger id="domain-kind">
+              <SelectTrigger id="domain-kind" className="h-11 text-base sm:text-sm rounded-xl">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl">
                 <SelectItem value="allow">Allow</SelectItem>
                 <SelectItem value="deny">Deny</SelectItem>
               </SelectContent>
@@ -109,6 +110,7 @@ function AddDomainDialog() {
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Why this rule exists"
+              className="h-11 text-base sm:text-sm rounded-xl"
             />
           </div>
         </div>
@@ -116,12 +118,14 @@ function AddDomainDialog() {
           <Button
             disabled={!domain.trim() || create.isPending}
             onClick={() => create.mutate()}
+            className="w-full sm:w-auto h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl"
           >
             {create.isPending ? 'Adding…' : 'Add rule'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
   )
 }
 
@@ -164,43 +168,72 @@ function DomainRulesTable() {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Domain</TableHead>
-          <TableHead>Rule</TableHead>
-          <TableHead>Note</TableHead>
-          <TableHead>Added by</TableHead>
-          <TableHead className="w-8" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <>
+      {/* Desktop Table View */}
+      <Table className="hidden md:table">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Domain</TableHead>
+            <TableHead>Rule</TableHead>
+            <TableHead>Note</TableHead>
+            <TableHead>Added by</TableHead>
+            <TableHead className="w-8" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((entry) => (
+            <TableRow key={entry.id}>
+              <TableCell className="font-medium">{entry.domain}</TableCell>
+              <TableCell>
+                <Badge className={kindBadgeClass(entry.kind)}>{entry.kind}</Badge>
+              </TableCell>
+              <TableCell className="max-w-xs truncate text-muted-foreground">
+                {entry.note ?? '—'}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {entry.added_by_email ?? '—'}
+              </TableCell>
+              <TableCell>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Remove domain rule"
+                  onClick={() => remove.mutate(entry.id)}
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Mobile Stacked Card View */}
+      <div className="space-y-3 md:hidden">
         {data.map((entry) => (
-          <TableRow key={entry.id}>
-            <TableCell className="font-medium">{entry.domain}</TableCell>
-            <TableCell>
+          <Card key={entry.id} className="rounded-2xl border-border/70 p-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-sm text-foreground">{entry.domain}</span>
               <Badge className={kindBadgeClass(entry.kind)}>{entry.kind}</Badge>
-            </TableCell>
-            <TableCell className="max-w-xs truncate text-muted-foreground">
-              {entry.note ?? '—'}
-            </TableCell>
-            <TableCell className="text-muted-foreground">
-              {entry.added_by_email ?? '—'}
-            </TableCell>
-            <TableCell>
+            </div>
+            {entry.note && (
+              <p className="text-xs text-muted-foreground">{entry.note}</p>
+            )}
+            <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs">
+              <span className="text-muted-foreground text-[10px]">Added by {entry.added_by_email ?? 'System'}</span>
               <Button
-                size="icon"
-                variant="ghost"
-                aria-label="Remove domain rule"
+                size="sm"
+                variant="outline"
+                className="h-9 px-3 text-destructive border-destructive/40 hover:bg-destructive/10 font-semibold rounded-xl text-xs"
                 onClick={() => remove.mutate(entry.id)}
               >
-                <Trash2 className="size-4 text-destructive" />
+                <Trash2 className="size-3.5 mr-1" /> Delete
               </Button>
-            </TableCell>
-          </TableRow>
+            </div>
+          </Card>
         ))}
-      </TableBody>
-    </Table>
+      </div>
+    </>
   )
 }
 
@@ -252,7 +285,7 @@ function DomainRequestsQueue() {
   if (!data || data.length === 0) {
     return (
       <Card className="rounded-2xl border-dashed">
-        <CardContent className="py-8 text-center text-muted-foreground">
+        <CardContent className="py-8 text-center text-muted-foreground text-sm">
           No pending domain requests.
         </CardContent>
       </Card>
@@ -260,49 +293,84 @@ function DomainRequestsQueue() {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Domain</TableHead>
-          <TableHead>Submitted by</TableHead>
-          <TableHead className="w-32" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data.map((req) => (
-          <TableRow key={req.id}>
-            <TableCell className="font-medium">{req.requested_domain}</TableCell>
-            <TableCell className="text-muted-foreground">
-              {req.reporter_email ?? 'Unknown'}
-            </TableCell>
-            <TableCell>
-              <div className="flex justify-end gap-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label="Approve request"
-                  disabled={approve.isPending}
-                  onClick={() => approve.mutate(req.id)}
-                >
-                  <Check className="size-4 text-primary" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label="Reject request"
-                  disabled={reject.isPending}
-                  onClick={() => reject.mutate(req.id)}
-                >
-                  <X className="size-4 text-destructive" />
-                </Button>
-              </div>
-            </TableCell>
+    <>
+      {/* Desktop Table View */}
+      <Table className="hidden md:table">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Domain</TableHead>
+            <TableHead>Submitted by</TableHead>
+            <TableHead className="w-32" />
           </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((req) => (
+            <TableRow key={req.id}>
+              <TableCell className="font-medium">{req.requested_domain}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {req.reporter_email ?? 'Unknown'}
+              </TableCell>
+              <TableCell>
+                <div className="flex justify-end gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Approve request"
+                    disabled={approve.isPending}
+                    onClick={() => approve.mutate(req.id)}
+                  >
+                    <Check className="size-4 text-primary" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Reject request"
+                    disabled={reject.isPending}
+                    onClick={() => reject.mutate(req.id)}
+                  >
+                    <X className="size-4 text-destructive" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Mobile Stacked Card View */}
+      <div className="space-y-3 md:hidden">
+        {data.map((req) => (
+          <Card key={req.id} className="rounded-2xl border-border/70 p-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-sm text-foreground">{req.requested_domain}</p>
+              <p className="text-xs text-muted-foreground">Submitted by {req.reporter_email ?? 'Unknown'}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                className="h-10 px-3 bg-emerald-600 text-white font-semibold rounded-xl"
+                disabled={approve.isPending}
+                onClick={() => approve.mutate(req.id)}
+              >
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-10 px-3 font-semibold rounded-xl"
+                disabled={reject.isPending}
+                onClick={() => reject.mutate(req.id)}
+              >
+                Reject
+              </Button>
+            </div>
+          </Card>
         ))}
-      </TableBody>
-    </Table>
+      </div>
+    </>
   )
 }
+
 
 export default function EmailDomains() {
   return (
