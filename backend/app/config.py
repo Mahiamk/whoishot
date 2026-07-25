@@ -1,6 +1,8 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 
 class Settings(BaseSettings):
@@ -10,7 +12,7 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    DATABASE_URL: str = "sqlite:///./campuscrown.db"
+    DATABASE_URL: str = "sqlite:///./whoishot.db"
     JWT_SECRET: str = "change-me-in-production"
     CORS_ORIGINS: str = "http://localhost:5173"
     ADMIN_EMAIL: str | None = None
@@ -21,12 +23,21 @@ class Settings(BaseSettings):
     # hides its "Continue with Google" button.
     GOOGLE_CLIENT_ID: str | None = None
 
+    # Resend email API configuration (supports RESEND_API_KEY or RESEND_API)
+    RESEND_API_KEY: str | None = Field(
+        default=None, validation_alias=AliasChoices("RESEND_API_KEY", "RESEND_API")
+    )
+    RESEND_FROM_EMAIL: str = "WhoIsHot <onboarding@resend.dev>"
+
+
+
     # SMTP is optional: unset in dev, emails are logged to the console instead.
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
     SMTP_USER: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_FROM: str = "no-reply@whoishot.local"
+
 
     # Monetization — social links subscription
     SUBSCRIPTION_PRICE_CENTS: int = 900   # RM 9.00
