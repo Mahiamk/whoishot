@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_db
 from app.deps import get_current_user
+from app.email import send_email
 from app.email_policy import REASON_MESSAGES, check_email_domain, domain_of
+
 from app.models import Report, ReportStatus, ReportType, User
 from app.ratelimit import DOMAIN_REQUEST_LIMIT, EMAIL_CHECK_LIMIT, limiter
 from app.schemas import (
@@ -105,6 +107,16 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    send_email(
+        db,
+        to=user.email,
+        template_key="welcome",
+        context={"display_name": user.display_name},
+        user_id=user.id,
+        is_transactional_required=True,
+    )
+
     return user
 
 
@@ -187,7 +199,18 @@ def google_login(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    send_email(
+        db,
+        to=user.email,
+        template_key="welcome",
+        context={"display_name": user.display_name},
+        user_id=user.id,
+        is_transactional_required=True,
+    )
+
     return GoogleLoginResponse(access_token=create_access_token(user.id))
+
 
 
 @router.get("/me", response_model=UserRead)
