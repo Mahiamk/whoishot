@@ -87,7 +87,7 @@ function ContestantGrid({
           <p className="text-sm text-muted-foreground">
             No contestants in this bracket yet.
           </p>
-          <Button asChild>
+          <Button asChild className="h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl">
             <Link to={`/join/${joinCode}`}>Be the first to join</Link>
           </Button>
         </CardContent>
@@ -95,7 +95,7 @@ function ContestantGrid({
     )
   }
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {contestants.map((c) => (
         <Link key={c.id} to={`/c/${c.id}`} className="group">
           <Card className="gap-0 overflow-hidden rounded-2xl p-0 transition-colors group-hover:border-primary">
@@ -119,14 +119,14 @@ function ContestantGrid({
             </div>
             <CardContent className="flex items-center justify-between gap-2 bg-muted px-3 py-3">
               <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">{c.name}</p>
+                <p className="truncate font-medium text-foreground text-sm">{c.name}</p>
                 {(c.age != null || c.country) && (
                   <p className="truncate text-xs text-muted-foreground">
                     {[c.age, c.country].filter(Boolean).join(' · ')}
                   </p>
                 )}
               </div>
-              <Badge variant="secondary" className="shrink-0">
+              <Badge variant="secondary" className="shrink-0 text-xs">
                 {c.avg_score != null ? c.avg_score.toFixed(2) : '—'}
               </Badge>
             </CardContent>
@@ -152,13 +152,14 @@ function PreviewGrid({
     )
   }
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {entries.map((entry, i) => (
         <ShowcaseCard key={entry.name ?? `real-${i}`} entry={entry} timing={timing} />
       ))}
     </div>
   )
 }
+
 
 export default function Contest() {
   const { joinCode } = useParams()
@@ -418,17 +419,17 @@ export default function Contest() {
       .sort((a, b) => (b.avg_score ?? -1) - (a.avg_score ?? -1)) ?? []
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-12">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">{contest.title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{contest.title}</h1>
           {contest.description && (
-            <p className="mt-1 text-muted-foreground">{contest.description}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{contest.description}</p>
           )}
         </div>
-        <div className="flex flex-col items-end gap-1.5">
+        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 border-t sm:border-t-0 pt-3 sm:pt-0">
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="px-3 py-2 font-mono text-sm">
+            <Badge variant="secondary" className="px-3 py-1.5 font-mono text-xs sm:text-sm">
               {contest.join_code}
             </Badge>
             <Button
@@ -436,34 +437,36 @@ export default function Contest() {
               size="icon"
               onClick={copyJoinCode}
               aria-label="Copy join code"
+              className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-xl"
             >
-              <Copy />
+              <Copy className="size-4" />
             </Button>
           </div>
-          <Countdown endsAt={contest.ends_at} status={contest.status} />
+          <Countdown endsAt={contest.ends_at} status={contest.status} className="text-xs sm:text-sm font-semibold" />
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        <Badge variant="secondary">{contest.contestant_count} contestants</Badge>
-        <Badge style={{ backgroundColor: FEMALE, color: 'white' }}>
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <Badge variant="secondary" className="text-xs py-1 px-2.5">{contest.contestant_count} contestants</Badge>
+        <Badge style={{ backgroundColor: FEMALE, color: 'white' }} className="text-xs py-1 px-2.5">
           {contest.female_count} ladies
         </Badge>
-        <Badge style={{ backgroundColor: MALE, color: 'white' }}>
+        <Badge style={{ backgroundColor: MALE, color: 'white' }} className="text-xs py-1 px-2.5">
           {contest.male_count} gents
         </Badge>
-        <Badge className="bg-amber-500 text-white hover:bg-amber-500">
+        <Badge className="bg-amber-500 text-white hover:bg-amber-500 text-xs py-1 px-2.5">
           {contest.rating_count} ratings
         </Badge>
         {contest.allowed_email_domain && (
-          <Badge variant="outline">@{contest.allowed_email_domain} only</Badge>
+          <Badge variant="outline" className="text-xs py-1 px-2.5">@{contest.allowed_email_domain} only</Badge>
         )}
-        <Button asChild variant="outline" size="sm" className="ml-auto">
+        <Button asChild variant="outline" size="sm" className="ml-auto h-10 min-h-[44px] px-3.5 font-semibold text-xs sm:text-sm rounded-xl">
           <Link to={`/contest/${joinCode}/board`}>
-            <Trophy /> Leaderboard
+            <Trophy className="size-4 text-amber-500" /> Leaderboard
           </Link>
         </Button>
       </div>
+
 
       {contest.entry_fee_cents > 0 && (
         <Card className="mb-6 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-background to-muted">
@@ -474,17 +477,17 @@ export default function Contest() {
                   🏆
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">Contest Prize Pool</h3>
+                  <h3 className="font-bold text-base sm:text-lg">Contest Prize Pool</h3>
                   <p className="text-xs text-muted-foreground">
                     Entry Fee: RM {(contest.entry_fee_cents / 100).toFixed(2)} · Min 5 paid entrants required
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-extrabold text-amber-500">
+                <div className="text-xl sm:text-2xl font-extrabold text-amber-500">
                   RM {(contest.prize_pool_cents / 100).toFixed(2)}
                 </div>
-                <div className="text-xs text-muted-foreground">Total Pool Collected</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">Total Pool Collected</div>
               </div>
             </div>
 
@@ -522,17 +525,17 @@ export default function Contest() {
         <Card className="mb-8 rounded-2xl border-dashed">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 py-6">
             <div className="flex items-center gap-3">
-              <Trophy className="size-8 text-amber-500" />
+              <Trophy className="size-8 text-amber-500 shrink-0" />
               <div>
-                <p className="text-lg font-semibold">Contest ended</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-base sm:text-lg font-semibold">Contest ended</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Voting has closed. Check the final results on the leaderboard.
                 </p>
               </div>
             </div>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl">
               <Link to={`/contest/${contest.join_code}/board`}>
-                <Trophy /> Final results
+                <Trophy className="size-4 text-amber-500" /> Final results
               </Link>
             </Button>
           </CardContent>
@@ -547,15 +550,15 @@ export default function Contest() {
         >
           <CardContent className="flex flex-wrap items-center justify-between gap-4 py-6">
             <div className="flex items-center gap-3">
-              <Sparkles className="size-8" />
+              <Sparkles className="size-8 shrink-0" />
               <div>
-                <p className="text-lg font-semibold">Think you've got it?</p>
-                <p className="text-sm opacity-90">
+                <p className="text-base sm:text-lg font-semibold">Think you've got it?</p>
+                <p className="text-xs sm:text-sm opacity-90">
                   Join as a contestant — only your name and bracket are required.
                 </p>
               </div>
             </div>
-            <Button asChild variant="secondary">
+            <Button asChild variant="secondary" className="h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl">
               <Link to={`/join/${contest.join_code}`}>Join as contestant</Link>
             </Button>
           </CardContent>
@@ -564,24 +567,24 @@ export default function Contest() {
       )}
 
       <Tabs defaultValue="ALL">
-        <TabsList className="mb-4 w-full">
-          <TabsTrigger value="ALL" className="flex-1">
+        <TabsList className="mb-4 w-full h-11 p-1 rounded-xl">
+          <TabsTrigger value="ALL" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
             <span
-              className="mr-2 inline-block size-2 rounded-full"
+              className="mr-1.5 inline-block size-2 rounded-full"
               style={{ backgroundColor: GENERAL }}
             />
             General ({general.length})
           </TabsTrigger>
-          <TabsTrigger value="F" className="flex-1">
+          <TabsTrigger value="F" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
             <span
-              className="mr-2 inline-block size-2 rounded-full"
+              className="mr-1.5 inline-block size-2 rounded-full"
               style={{ backgroundColor: FEMALE }}
             />
             Ladies ({ladies.length})
           </TabsTrigger>
-          <TabsTrigger value="M" className="flex-1">
+          <TabsTrigger value="M" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
             <span
-              className="mr-2 inline-block size-2 rounded-full"
+              className="mr-1.5 inline-block size-2 rounded-full"
               style={{ backgroundColor: MALE }}
             />
             Gents ({gents.length})
@@ -600,3 +603,4 @@ export default function Contest() {
     </main>
   )
 }
+
