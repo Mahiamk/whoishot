@@ -177,6 +177,7 @@ function RequestInfoDialog({ report }: { report: AdminReportItem }) {
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Can you confirm this photo is really you?"
               rows={4}
+              className="text-base sm:text-sm rounded-xl p-3"
             />
           </div>
           <div className="space-y-2">
@@ -187,6 +188,7 @@ function RequestInfoDialog({ report }: { report: AdminReportItem }) {
               value={deadline}
               min={new Date().toISOString().slice(0, 10)}
               onChange={(e) => setDeadline(e.target.value)}
+              className="h-11 text-base sm:text-sm rounded-xl"
             />
           </div>
         </div>
@@ -194,10 +196,12 @@ function RequestInfoDialog({ report }: { report: AdminReportItem }) {
           <Button
             disabled={!message.trim() || requestInfo.isPending}
             onClick={() => requestInfo.mutate()}
+            className="w-full sm:w-auto h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl"
           >
             {requestInfo.isPending ? 'Sending…' : 'Send request'}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   )
@@ -356,8 +360,10 @@ function ReportRow({ report }: { report: AdminReportItem }) {
 }
 
 export default function Reports() {
+  const queryClient = useQueryClient()
   const [status, setStatus] = useState<ReportStatus>('open')
   const [page, setPage] = useState(1)
+
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin', 'reports', status, page],
@@ -412,7 +418,8 @@ export default function Reports() {
 
       {data && data.items.length > 0 && (
         <>
-          <Table>
+          {/* Desktop Table View */}
+          <Table className="hidden md:table">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8" />
@@ -429,16 +436,73 @@ export default function Reports() {
               ))}
             </TableBody>
           </Table>
-          <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+
+          {/* Mobile Stacked Card View */}
+          <div className="space-y-4 md:hidden">
+            {data.items.map((r) => (
+              <Card key={r.id} className="rounded-2xl border-border/70 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-bold text-base">{r.contestant.name}</h3>
+                    <p className="text-xs text-muted-foreground">Reporter: {r.reporter_email ?? 'Anonymous'}</p>
+                  </div>
+                  <Badge className={statusColor(r.contestant.status)}>
+                    {r.contestant.status}
+                  </Badge>
+                </div>
+                <div className="rounded-xl border bg-muted/40 p-3 text-xs space-y-1">
+                  <p className="font-semibold text-foreground">Reason:</p>
+                  <p className="text-muted-foreground">{r.reason}</p>
+                </div>
+                {r.info_request && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-medium">Info Request:</span>
+                    <Badge className={infoRequestBadgeClass(r.info_request.status)}>
+                      {INFO_REQUEST_LABELS[r.info_request.status]}
+                    </Badge>
+                  </div>
+                )}
+                {r.status === 'open' && (
+                  <div className="pt-2 flex flex-wrap gap-2">
+                    {(!r.info_request || r.info_request.status !== 'pending') && (
+                      <RequestInfoDialog report={r} />
+                    )}
+                    {ACTIONS.map(({ action, label, destructive }) => (
+                      <Button
+                        key={action}
+                        size="sm"
+                        variant={destructive ? 'destructive' : 'outline'}
+                        className="h-10 min-h-[40px] text-xs font-semibold rounded-xl"
+                        onClick={() => {
+                          api(`/admin/reports/${r.id}/resolve`, {
+                            method: 'POST',
+                            body: JSON.stringify({ action }),
+                          }).then(() => {
+                            toast.success(`Report resolved: ${action.replace('_', ' ')}`)
+                            queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] })
+                          }).catch((err) => toast.error(err instanceof Error ? err.message : 'Failed'))
+                        }}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>
               Page {data.page} of {totalPages} · {data.total} total
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
+                className="h-10 min-h-[40px] px-4 font-medium rounded-xl"
               >
                 Previous
               </Button>
@@ -447,6 +511,7 @@ export default function Reports() {
                 size="sm"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
+                className="h-10 min-h-[40px] px-4 font-medium rounded-xl"
               >
                 Next
               </Button>
@@ -454,6 +519,7 @@ export default function Reports() {
           </div>
         </>
       )}
+
     </div>
   )
 }
