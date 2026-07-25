@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -22,9 +23,13 @@ from app.models import (
     EntryPaymentStatus,
     Gender,
     InfoRequestStatus,
+    InquiryStatus,
+    InquiryType,
+    IntroductionStatus,
     PayoutRowStatus,
     PayoutStatus,
     ReportStatus,
+    ReportType,
     SubscriptionStatus,
     UserRole,
     utcnow,
@@ -55,6 +60,7 @@ class UserRead(BaseModel):
     role: UserRole
     is_banned: bool
     is_verified: bool
+    email_opt_out: bool = False
     created_at: datetime
     country: str | None = None
     detected_country: str | None = None
@@ -64,6 +70,8 @@ class UserUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=100)
     gender: Gender | None = None
     country: str | None = Field(default=None, max_length=50)
+    email_opt_out: bool | None = None
+
 
 
 class PaymentProviderStatusItem(BaseModel):
@@ -301,6 +309,7 @@ class ContestantCreate(BaseModel):
     fav_things: str | None = None
     relationship_status: str | None = None
     socials_visible: bool = True
+    open_to_opportunities: bool = False
 
 
 class ContestantUpdate(BaseModel):
@@ -314,6 +323,7 @@ class ContestantUpdate(BaseModel):
     fav_things: str | None = None
     relationship_status: str | None = None
     socials_visible: bool = True
+    open_to_opportunities: bool | None = None
 
 
 class ContestantRead(BaseModel):
@@ -331,6 +341,7 @@ class ContestantRead(BaseModel):
     fav_things: str | None
     relationship_status: str | None
     socials_visible: bool
+    open_to_opportunities: bool = False
     status: ContestantStatus
 
 
@@ -367,11 +378,13 @@ class MyContestantEntry(BaseModel):
     fav_things: str | None
     relationship_status: str | None
     socials_visible: bool
+    open_to_opportunities: bool = False
     status: ContestantStatus
     criterion_averages: dict[str, float]
     vote_count: int
     avg_score: float | None
     rank: int | None
+
 
 
 # --- subscriptions ---
@@ -883,3 +896,84 @@ class AdminContestantDetail(BaseModel):
     vote_count: int
     avg_score: float | None
     voters: list[AdminVoterEntry]
+
+
+# --- partner inquiries & introductions ---
+
+class PartnerInquiryCreate(BaseModel):
+    company_name: str = Field(min_length=1, max_length=200)
+    contact_name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+    phone: str | None = Field(default=None, max_length=50)
+    inquiry_type: InquiryType
+    message: str = Field(min_length=1)
+    interested_in: str | None = None
+    website_hp: str | None = None  # honeypot field — anti-spam
+
+
+class PartnerInquiryStatusUpdate(BaseModel):
+    status: InquiryStatus
+
+
+class ProposeIntroductionCreate(BaseModel):
+    contestant_id: int
+    admin_note: str | None = None
+
+
+class PartnerIntroductionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    inquiry_id: int
+    contestant_id: int
+    admin_id: int
+    status: IntroductionStatus
+    admin_note: str | None
+    contact_info_shared: bool
+    shared_at: datetime | None
+    created_at: datetime
+    responded_at: datetime | None
+    deadline_at: datetime
+    # Display extensions
+    contestant_name: str | None = None
+    contestant_photo_url: str | None = None
+    contest_title: str | None = None
+    company_name: str | None = None
+    contact_name: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    inquiry_type: str | None = None
+    inquiry_message: str | None = None
+    inquiry_interested_in: str | None = None
+
+
+class PartnerInquiryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    company_name: str
+    contact_name: str
+    email: str
+    phone: str | None
+    inquiry_type: InquiryType
+    message: str
+    interested_in: str | None
+    status: InquiryStatus
+    created_at: datetime
+    introductions: list[PartnerIntroductionRead] = []
+
+
+class IntroductionRespond(BaseModel):
+    action: Literal["accept", "decline"]
+
+
+class OptedInContestantItem(BaseModel):
+    id: int
+    name: str
+    photo_url: str | None
+    gender_category: Gender
+    country: str | None
+    contest_id: int
+    contest_title: str
+    open_to_opportunities: bool
+
