@@ -173,7 +173,7 @@ export function CreateContestDialog() {
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Sunway CS Batch '24" {...field} />
+                    <Input placeholder="Sunway CS Batch '24" className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -186,7 +186,7 @@ export function CreateContestDialog() {
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="What's this contest about?" {...field} />
+                    <Input placeholder="What's this contest about?" className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -199,7 +199,7 @@ export function CreateContestDialog() {
                 <FormItem>
                   <FormLabel>University email domain</FormLabel>
                   <FormControl>
-                    <Input placeholder="student.sunway.edu.my" {...field} />
+                    <Input placeholder="student.sunway.edu.my" className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                   </FormControl>
                   <FormDescription>
                     Only accounts with an email at this domain (or a
@@ -219,6 +219,7 @@ export function CreateContestDialog() {
                     <Input
                       type="password"
                       placeholder="Share it with your batch"
+                      className="h-11 text-base sm:text-sm rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -241,14 +242,14 @@ export function CreateContestDialog() {
                       variant="outline"
                       value={field.value}
                       onValueChange={(v) => v && field.onChange(v)}
-                      className="w-full"
+                      className="w-full h-11"
                     >
                       {DURATIONS.map((d) => (
-                        <ToggleGroupItem key={d} value={d} className="flex-1">
+                        <ToggleGroupItem key={d} value={d} className="flex-1 h-11 rounded-xl">
                           {d}d
                         </ToggleGroupItem>
                       ))}
-                      <ToggleGroupItem value="custom" className="flex-1">
+                      <ToggleGroupItem value="custom" className="flex-1 h-11 rounded-xl">
                         Custom
                       </ToggleGroupItem>
                     </ToggleGroup>
@@ -263,7 +264,7 @@ export function CreateContestDialog() {
                             type="date"
                             min={todayISO()}
                             max={maxDateISO()}
-                            className="mt-2"
+                            className="mt-2 h-11 text-base sm:text-sm rounded-xl"
                             {...dateField}
                           />
                         </FormControl>
@@ -296,6 +297,7 @@ export function CreateContestDialog() {
                       min={0}
                       step={1}
                       placeholder="0 (Free contest)"
+                      className="h-11 text-base sm:text-sm rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -345,12 +347,12 @@ export function CreateContestDialog() {
                         type="checkbox"
                         checked={field.value}
                         onChange={(e) => field.onChange(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-primary"
+                        className="mt-0.5 h-5 w-5 rounded border-gray-300 accent-primary"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel className="text-xs font-normal cursor-pointer">
-                        I understand entries are locked after payment and CampusCrown is not liable for contest outcomes.
+                        I understand entries are locked after payment and WhoIsHot is not liable for contest outcomes.
                       </FormLabel>
                       <FormMessage />
                     </div>
@@ -362,7 +364,6 @@ export function CreateContestDialog() {
             <FormField
               control={form.control as any}
               name="is_showcase_public"
-
               render={({ field }) => (
                 <FormItem className="flex items-center justify-between rounded-lg border p-3">
                   <div>
@@ -382,11 +383,12 @@ export function CreateContestDialog() {
             />
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-11 min-h-[44px] rounded-xl font-semibold text-base sm:text-sm"
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? 'Creating…' : 'Create contest'}
             </Button>
+
           </form>
         </Form>
       </DialogContent>
