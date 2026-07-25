@@ -410,9 +410,9 @@ export function CheckoutDialog({
                       placeholder="e.g. https://telebirr.et/..., https://cbe.et/..., or reference code"
                       value={pastedUrl}
                       onChange={(e) => setPastedUrl(e.target.value)}
-                      className="text-xs font-mono"
+                      className="h-11 text-base sm:text-sm font-mono rounded-xl"
                     />
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">
                       Supported: Telebirr, CBE, Zemen, Bank of Abyssinia, Awash Bank URLs & reference numbers.
                     </p>
                   </TabsContent>
@@ -424,7 +424,7 @@ export function CheckoutDialog({
                         accept="image/jpeg,image/png,image/webp"
                         disabled={uploading}
                         onChange={(e) => handleFileUpload(e.target.files)}
-                        className="text-xs"
+                        className="h-11 text-base sm:text-sm rounded-xl"
                       />
                     </div>
                     {uploading && <p className="text-xs text-muted-foreground">Uploading screenshot...</p>}
@@ -444,14 +444,14 @@ export function CheckoutDialog({
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={2}
-                  className="text-xs"
+                  className="text-base sm:text-sm rounded-xl p-3"
                 />
               </div>
 
               <Button
                 onClick={handleManualSubmit}
                 disabled={submitting || checking || uploading || (receiptMode === 'link' ? !pastedUrl.trim() : !receiptUrl)}
-                className="w-full gap-2"
+                className="w-full h-11 min-h-[44px] rounded-xl font-semibold gap-2"
               >
                 {checking ? (
                   <>
@@ -461,6 +461,7 @@ export function CheckoutDialog({
                   'Submit for Review'
                 )}
               </Button>
+
             </TabsContent>
           </Tabs>
         )}
