@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, Pencil, Trophy } from 'lucide-react'
+import { Bell, Check, CheckCircle2, Pencil, Sparkles, Trophy } from 'lucide-react'
 import { toast } from 'sonner'
 import { CheckoutDialog } from '@/components/CheckoutDialog'
 
@@ -31,6 +31,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+
 import {
   Dialog,
   DialogContent,
@@ -77,12 +78,35 @@ interface MyContestantEntry {
   fav_things: string | null
   relationship_status: string | null
   socials_visible: boolean
+  open_to_opportunities: boolean
   status: 'active' | 'reported' | 'removed'
   criterion_averages: Record<string, number>
   vote_count: number
   avg_score: number | null
   rank: number | null
 }
+
+interface PartnerIntroductionItem {
+  id: number
+  inquiry_id: number
+  contestant_id: number
+  admin_id: number
+  status: 'pending_consent' | 'accepted' | 'declined' | 'expired'
+  admin_note: string | null
+  contact_info_shared: boolean
+  shared_at: string | null
+  created_at: string
+  responded_at: string | null
+  deadline_at: string
+  contestant_name?: string
+  contest_title?: string
+  company_name?: string
+  contact_name?: string
+  inquiry_type?: string
+  inquiry_message?: string
+  inquiry_interested_in?: string
+}
+
 
 interface MyInfoRequestItem {
   id: number
@@ -204,21 +228,21 @@ function AccountTab() {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-2xl">
-        <CardHeader>
+      <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+        <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-4 space-y-1">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>{user.email}</CardDescription>
+              <CardTitle className="text-xl font-bold tracking-tight">Profile</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">{user.email}</CardDescription>
             </div>
             {user.is_verified ? (
-              <Badge className="bg-primary text-primary-foreground">Verified</Badge>
+              <Badge className="bg-primary text-primary-foreground text-xs font-semibold px-2.5 py-1">Verified</Badge>
             ) : (
-              <Badge variant="secondary">Unverified</Badge>
+              <Badge variant="secondary" className="text-xs px-2.5 py-1">Unverified</Badge>
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 sm:p-8 pt-0">
           <Form {...accountForm}>
             <form
               onSubmit={accountForm.handleSubmit(onAccountSubmit)}
@@ -229,9 +253,9 @@ function AccountTab() {
                 name="display_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Display name</FormLabel>
+                    <FormLabel className="text-sm font-medium">Display name</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -242,14 +266,14 @@ function AccountTab() {
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender</FormLabel>
+                    <FormLabel className="text-sm font-medium">Gender</FormLabel>
                     <FormControl>
                       <Tabs value={field.value} onValueChange={field.onChange}>
-                        <TabsList className="w-full">
-                          <TabsTrigger value="F" className="flex-1">
+                        <TabsList className="w-full h-11 p-1 rounded-xl">
+                          <TabsTrigger value="F" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                             Female
                           </TabsTrigger>
-                          <TabsTrigger value="M" className="flex-1">
+                          <TabsTrigger value="M" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                             Male
                           </TabsTrigger>
                         </TabsList>
@@ -264,11 +288,11 @@ function AccountTab() {
                 name="country"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Country / Payment Region</FormLabel>
+                    <FormLabel className="text-sm font-medium">Country / Payment Region</FormLabel>
                     <FormControl>
                       <select
                         {...field}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                       >
                         <option value="">Auto-detect from IP</option>
                         <option value="MY">Malaysia (MYR / Touch 'n Go)</option>
@@ -276,7 +300,7 @@ function AccountTab() {
                         <option value="US">Other / Unsupported Region</option>
                       </select>
                     </FormControl>
-                    <FormDescription>
+                    <FormDescription className="text-xs text-muted-foreground">
                       {user.detected_country && (
                         <span>Detected IP location: <strong>{user.detected_country}</strong>. </span>
                       )}
@@ -289,6 +313,7 @@ function AccountTab() {
               <Button
                 type="submit"
                 disabled={accountForm.formState.isSubmitting}
+                className="h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl"
               >
                 {accountForm.formState.isSubmitting ? 'Saving…' : 'Save changes'}
               </Button>
@@ -297,14 +322,14 @@ function AccountTab() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle>Change password</CardTitle>
-          <CardDescription>
+      <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+        <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-4 space-y-1">
+          <CardTitle className="text-xl font-bold tracking-tight">Change password</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">
             Choose a new password with at least 8 characters.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 sm:p-8 pt-0">
           <Form {...passwordForm}>
             <form
               onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}
@@ -315,9 +340,9 @@ function AccountTab() {
                 name="old_password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Current password</FormLabel>
+                    <FormLabel className="text-sm font-medium">Current password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -328,9 +353,9 @@ function AccountTab() {
                 name="new_password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>New password</FormLabel>
+                    <FormLabel className="text-sm font-medium">New password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -341,9 +366,9 @@ function AccountTab() {
                 name="confirm_password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm new password</FormLabel>
+                    <FormLabel className="text-sm font-medium">Confirm new password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -353,6 +378,7 @@ function AccountTab() {
                 type="submit"
                 variant="outline"
                 disabled={passwordForm.formState.isSubmitting}
+                className="h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl"
               >
                 {passwordForm.formState.isSubmitting
                   ? 'Updating…'
@@ -363,10 +389,70 @@ function AccountTab() {
         </CardContent>
       </Card>
 
+      <EmailPreferencesCard />
+
       <MyPaymentsCard />
     </div>
   )
+
 }
+
+function EmailPreferencesCard() {
+  const { user, refreshUser } = useAuth()
+  const [optOut, setOptOut] = useState(user?.email_opt_out ?? false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (user) setOptOut(user.email_opt_out ?? false)
+  }, [user])
+
+  async function handleToggle(checked: boolean) {
+    setOptOut(checked)
+    setSaving(true)
+    try {
+      await api('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ email_opt_out: checked }),
+      })
+      await refreshUser()
+      toast.success(checked ? 'Opted out of non-essential emails' : 'Email notifications enabled')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update email preferences')
+      setOptOut(!checked)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+      <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-4 space-y-1">
+        <CardTitle className="text-xl font-bold tracking-tight">Email preferences</CardTitle>
+        <CardDescription className="text-xs sm:text-sm">
+          Manage which emails you receive from WhoIsHot.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-6 sm:p-8 pt-0 space-y-4">
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-muted/30 p-4">
+          <div className="space-y-0.5">
+            <p className="font-semibold text-sm text-foreground">Opt out of contest activity & reminder emails</p>
+            <p className="text-xs text-muted-foreground max-w-md">
+              Suppresses contest joined and contest ending soon reminders. Security, account verification, payment reviews, and admin/moderation notifications will always send regardless.
+            </p>
+          </div>
+          <Switch
+            checked={optOut}
+            disabled={saving}
+            onCheckedChange={handleToggle}
+            className="shrink-0"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+}
+
 
 interface UserPaymentItem {
   id: number
@@ -454,7 +540,20 @@ function MyPaymentsCard() {
   )
 }
 
-
+interface FullProfile {
+  id: number
+  name: string
+  gender_category: 'F' | 'M'
+  photo_url: string | null
+  age: number | null
+  country: string | null
+  hobbies: string | null
+  fav_things: string | null
+  relationship_status: string | null
+  socials_visible: boolean
+  open_to_opportunities: boolean
+  socials: { id: number; platform: string; handle: string }[]
+}
 
 // --- Edit profile dialog -------------------------------------------------
 
@@ -474,6 +573,7 @@ const editSchema = z.object({
   tiktok: z.string().max(100),
   x: z.string().max(100),
   socials_visible: z.boolean(),
+  open_to_opportunities: z.boolean(),
 })
 type EditValues = z.infer<typeof editSchema>
 
@@ -512,6 +612,7 @@ function EditProfileDialog({
       tiktok: '',
       x: '',
       socials_visible: true,
+      open_to_opportunities: false,
     },
   })
 
@@ -532,6 +633,7 @@ function EditProfileDialog({
       tiktok: byPlatform.tiktok ?? '',
       x: byPlatform.x ?? '',
       socials_visible: profile.socials_visible,
+      open_to_opportunities: profile.open_to_opportunities ?? false,
     })
   }, [profile, form])
 
@@ -591,6 +693,7 @@ function EditProfileDialog({
           fav_things: values.fav_things.trim() || null,
           relationship_status: values.relationship_status.trim() || null,
           socials_visible: values.socials_visible,
+          open_to_opportunities: values.open_to_opportunities,
           socials,
         }),
       })
@@ -647,7 +750,7 @@ function EditProfileDialog({
                   <FormItem>
                     <FormLabel>Name *</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -662,11 +765,11 @@ function EditProfileDialog({
                     <FormLabel>Bracket *</FormLabel>
                     <FormControl>
                       <Tabs value={field.value} onValueChange={field.onChange}>
-                        <TabsList className="w-full">
-                          <TabsTrigger value="F" className="flex-1">
+                        <TabsList className="w-full h-11 p-1 rounded-xl">
+                          <TabsTrigger value="F" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                             Ladies
                           </TabsTrigger>
-                          <TabsTrigger value="M" className="flex-1">
+                          <TabsTrigger value="M" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                             Gents
                           </TabsTrigger>
                         </TabsList>
@@ -685,7 +788,7 @@ function EditProfileDialog({
                     <FormItem>
                       <FormLabel>Age</FormLabel>
                       <FormControl>
-                        <Input inputMode="numeric" {...field} />
+                        <Input inputMode="numeric" className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -698,7 +801,7 @@ function EditProfileDialog({
                     <FormItem>
                       <FormLabel>Country</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -713,7 +816,7 @@ function EditProfileDialog({
                   <FormItem>
                     <FormLabel>Hobbies</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -726,7 +829,7 @@ function EditProfileDialog({
                   <FormItem>
                     <FormLabel>Favourite things</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -739,7 +842,7 @@ function EditProfileDialog({
                   <FormItem>
                     <FormLabel>Relationship status</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -754,7 +857,7 @@ function EditProfileDialog({
                     <FormItem>
                       <FormLabel>Instagram</FormLabel>
                       <FormControl>
-                        <Input placeholder="@you" {...field} />
+                        <Input placeholder="@you" className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -766,7 +869,7 @@ function EditProfileDialog({
                     <FormItem>
                       <FormLabel>TikTok</FormLabel>
                       <FormControl>
-                        <Input placeholder="@you" {...field} />
+                        <Input placeholder="@you" className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -778,7 +881,7 @@ function EditProfileDialog({
                     <FormItem>
                       <FormLabel>X</FormLabel>
                       <FormControl>
-                        <Input placeholder="@you" {...field} />
+                        <Input placeholder="@you" className="h-11 text-base sm:text-sm rounded-xl" {...field} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -806,16 +909,40 @@ function EditProfileDialog({
                 )}
               />
 
-              <DialogFooter>
+              <FormField
+                control={form.control}
+                name="open_to_opportunities"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                    <div>
+                      <FormLabel className="flex items-center gap-1.5 font-bold text-foreground">
+                        <Sparkles className="size-4 text-amber-500" /> Partner Opportunities Opt-in
+                      </FormLabel>
+                      <FormDescription className="text-xs text-muted-foreground max-w-sm mt-0.5">
+                        Allow modeling schools, fashion shows, or stylists to be introduced to me if they're interested. WhoIsHot will contact you first before sharing anything.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter className="pt-2">
                 <Button
                   type="submit"
                   disabled={form.formState.isSubmitting}
-                  className="w-full"
+                  className="w-full sm:w-auto h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl"
                 >
                   {form.formState.isSubmitting ? 'Saving…' : 'Save changes'}
                 </Button>
               </DialogFooter>
             </form>
+
           </Form>
         )}
       </DialogContent>
@@ -845,43 +972,52 @@ function MyContestantCard({ entry }: { entry: MyContestantEntry }) {
   const rankedCriteria = CRITERIA.filter((c) => c in entry.criterion_averages)
 
   return (
-    <Card className="rounded-2xl">
-      <CardContent className="space-y-4 py-5">
-        <div className="flex items-start justify-between gap-3">
+    <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+      <CardContent className="space-y-4 p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Avatar className="size-14 border-2" style={{ borderColor: color }}>
+            <Avatar className="size-14 border-2 shrink-0" style={{ borderColor: color }}>
               {entry.photo_url && <AvatarImage src={entry.photo_url} alt={entry.name} />}
-              <AvatarFallback style={{ backgroundColor: color, color: 'white' }}>
+              <AvatarFallback style={{ backgroundColor: color, color: 'white' }} className="font-bold">
                 {initials(entry.name)}
               </AvatarFallback>
             </Avatar>
             <div>
               <Link
                 to={`/contest/${entry.contest_join_code}`}
-                className="font-semibold hover:underline"
+                className="font-bold text-base sm:text-lg hover:underline text-foreground"
               >
                 {entry.contest_title}
               </Link>
-              <p className="text-xs text-muted-foreground">
-                {entry.contest_join_code}
+              <p className="text-xs font-mono text-muted-foreground">
+                Code: {entry.contest_join_code}
               </p>
-              {statusBadge(entry.status)}
+              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                {statusBadge(entry.status)}
+                {entry.open_to_opportunities && (
+                  <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-500 bg-amber-500/10 gap-1 font-medium">
+                    <Sparkles className="size-3 shrink-0" /> Opportunities Opted In
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Trophy
-              className={`size-4 ${entry.contest_status === 'ended' ? 'text-amber-500' : 'text-muted-foreground'}`}
-            />
-            {entry.rank != null ? (
-              <span className="text-sm font-medium">
-                {entry.contest_status === 'ended' ? 'Final rank' : 'Rank'} #
-                {entry.rank}
-              </span>
-            ) : (
-              <span className="text-sm text-muted-foreground">Unranked</span>
-            )}
+
+          <div className="flex items-center gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 justify-between sm:justify-end">
+            <div className="flex items-center gap-1.5">
+              <Trophy
+                className={`size-4 ${entry.contest_status === 'ended' ? 'text-amber-500' : 'text-muted-foreground'}`}
+              />
+              {entry.rank != null ? (
+                <span className="text-xs sm:text-sm font-semibold">
+                  {entry.contest_status === 'ended' ? 'Final rank' : 'Rank'} #{entry.rank}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Unranked</span>
+              )}
+            </div>
             {entry.avg_score != null && (
-              <Badge className="bg-amber-500 text-white hover:bg-amber-500">
+              <Badge className="bg-amber-500 text-white hover:bg-amber-500 font-bold text-xs">
                 {entry.avg_score.toFixed(2)}
               </Badge>
             )}
@@ -889,14 +1025,14 @@ function MyContestantCard({ entry }: { entry: MyContestantEntry }) {
         </div>
 
         {rankedCriteria.length > 0 ? (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 pt-2 border-t text-xs">
             {rankedCriteria.map((criterion) => (
-              <div key={criterion} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="capitalize text-muted-foreground">
+              <div key={criterion} className="space-y-1 bg-muted/30 p-2 rounded-xl border border-border/40">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="capitalize text-muted-foreground font-medium">
                     {criterion}
                   </span>
-                  <span className="font-medium">
+                  <span className="font-bold">
                     {entry.criterion_averages[criterion].toFixed(1)}
                   </span>
                 </div>
@@ -908,40 +1044,46 @@ function MyContestantCard({ entry }: { entry: MyContestantEntry }) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground pt-1">
             No ratings yet — {entry.vote_count}/3 voters so far.
           </p>
         )}
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 pt-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setEditOpen(true)}
             disabled={isRemoved}
+            className="h-11 min-h-[44px] px-4 font-semibold text-xs sm:text-sm rounded-xl gap-1.5"
           >
-            <Pencil /> Edit profile
+            <Pencil className="size-4" /> Edit profile
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" disabled={isRemoved}>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={isRemoved}
+                className="h-11 min-h-[44px] px-4 font-semibold text-xs sm:text-sm rounded-xl"
+              >
                 Remove me from this contest
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="rounded-3xl p-6 sm:p-8">
               <AlertDialogHeader>
-                <AlertDialogTitle>
+                <AlertDialogTitle className="text-xl font-bold">
                   Leave {entry.contest_title}?
                 </AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogDescription className="text-xs sm:text-sm">
                   Your profile will be hidden instantly. This can't be undone
                   from here.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogFooter className="mt-4 gap-2">
+                <AlertDialogCancel className="h-11 min-h-[44px] rounded-xl font-medium">Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  className="bg-destructive text-white hover:bg-destructive/90"
+                  className="h-11 min-h-[44px] rounded-xl font-semibold bg-destructive text-white hover:bg-destructive/90"
                   onClick={() => removeMutation.mutate()}
                 >
                   Remove me
@@ -982,12 +1124,12 @@ function MyContestsTab() {
 
   if (!data || data.length === 0) {
     return (
-      <Card className="rounded-2xl border-dashed">
-        <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
-          <p className="text-muted-foreground">
+      <Card className="rounded-3xl border-dashed">
+        <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+          <p className="text-sm text-muted-foreground">
             You haven't joined any contests yet.
           </p>
-          <Button asChild>
+          <Button asChild className="h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl">
             <Link to="/">Find a contest</Link>
           </Button>
         </CardContent>
@@ -1035,33 +1177,33 @@ function NoticeCard({ notice }: { notice: MyInfoRequestItem }) {
   })
 
   return (
-    <Card className="rounded-2xl">
-      <CardHeader>
+    <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+      <CardHeader className="p-6 sm:p-8 pb-3 sm:pb-3 space-y-1">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">
+          <CardTitle className="text-base sm:text-lg font-bold">
             {notice.contest_title} — {notice.contestant_name}
           </CardTitle>
           {notice.status === 'pending' && (
-            <Badge className="bg-amber-500 text-white hover:bg-amber-500">
+            <Badge className="bg-amber-500 text-white hover:bg-amber-500 text-xs font-bold">
               {left > 0 ? `${left} day${left === 1 ? '' : 's'} left` : 'Due today'}
             </Badge>
           )}
           {notice.status === 'responded' && (
-            <Badge className="bg-primary/20 text-primary">Responded</Badge>
+            <Badge className="bg-primary/20 text-primary text-xs font-semibold">Responded</Badge>
           )}
           {notice.status === 'expired' && (
-            <Badge className="bg-destructive text-white">Expired</Badge>
+            <Badge className="bg-destructive text-white text-xs font-semibold">Expired</Badge>
           )}
         </div>
-        <CardDescription>An admin asked:</CardDescription>
+        <CardDescription className="text-xs sm:text-sm">An admin asked:</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="rounded-lg border bg-muted/50 p-3 text-sm">
+      <CardContent className="p-6 sm:p-8 pt-0 space-y-3">
+        <p className="rounded-2xl border bg-muted/40 p-4 text-xs sm:text-sm leading-relaxed">
           {notice.message}
         </p>
 
         {notice.status === 'expired' && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             The deadline passed before you responded, so your profile in
             this contest was automatically hidden pending review. Contact
             the contest admin if you'd still like to respond.
@@ -1069,11 +1211,11 @@ function NoticeCard({ notice }: { notice: MyInfoRequestItem }) {
         )}
 
         {notice.status === 'responded' ? (
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">
+          <div className="space-y-1 pt-1">
+            <p className="text-xs font-semibold text-muted-foreground">
               Your response
             </p>
-            <p className="rounded-lg border p-3 text-sm">
+            <p className="rounded-2xl border p-4 text-xs sm:text-sm bg-background">
               {notice.user_response}
             </p>
           </div>
@@ -1081,7 +1223,7 @@ function NoticeCard({ notice }: { notice: MyInfoRequestItem }) {
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit((v) => respond.mutate(v))}
-              className="space-y-3"
+              className="space-y-3 pt-1"
             >
               <FormField
                 control={form.control}
@@ -1093,13 +1235,14 @@ function NoticeCard({ notice }: { notice: MyInfoRequestItem }) {
                         placeholder="Write your response…"
                         rows={4}
                         {...field}
+                        className="text-base sm:text-sm rounded-xl p-3"
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={respond.isPending}>
+              <Button type="submit" disabled={respond.isPending} className="h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl">
                 {respond.isPending ? 'Sending…' : 'Send response'}
               </Button>
             </form>
@@ -1110,13 +1253,114 @@ function NoticeCard({ notice }: { notice: MyInfoRequestItem }) {
   )
 }
 
+function PartnerIntroductionCard({ intro }: { intro: PartnerIntroductionItem }) {
+  const queryClient = useQueryClient()
+  const left = daysLeft(intro.deadline_at)
+
+  const respondMutation = useMutation({
+    mutationFn: (action: 'accept' | 'decline') =>
+      api(`/users/me/introductions/${intro.id}/respond`, {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      }),
+    onSuccess: (_, action) => {
+      toast.success(action === 'accept' ? 'Introduction accepted!' : 'Introduction declined')
+      queryClient.invalidateQueries({ queryKey: ['my-introductions'] })
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : 'Could not submit response'),
+  })
+
+  return (
+    <Card className="rounded-3xl border-amber-500/40 bg-amber-500/5 overflow-hidden shadow-lg">
+      <CardHeader className="p-6 sm:p-8 pb-3 sm:pb-3 space-y-1">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-5 text-amber-500 shrink-0" />
+            <CardTitle className="text-base sm:text-lg font-bold">
+              Opportunity Proposal — {intro.company_name}
+            </CardTitle>
+          </div>
+          {intro.status === 'pending_consent' && (
+            <Badge className="bg-amber-500 text-white hover:bg-amber-500 text-xs font-bold">
+              {left > 0 ? `${left} day${left === 1 ? '' : 's'} left` : 'Due today'}
+            </Badge>
+          )}
+          {intro.status === 'accepted' && (
+            <Badge className="bg-emerald-500 text-white text-xs font-semibold">Accepted</Badge>
+          )}
+          {intro.status === 'declined' && (
+            <Badge variant="outline" className="border-destructive text-destructive text-xs font-semibold">Declined</Badge>
+          )}
+          {intro.status === 'expired' && (
+            <Badge variant="secondary" className="text-xs">Expired</Badge>
+          )}
+        </div>
+        <CardDescription className="text-xs sm:text-sm">
+          Contest entry: <strong>{intro.contestant_name}</strong> ({intro.contest_title})
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-6 sm:p-8 pt-0 space-y-3">
+        {intro.inquiry_interested_in && (
+          <p className="text-xs font-semibold text-primary">
+            Targeting: {intro.inquiry_interested_in}
+          </p>
+        )}
+        <div className="rounded-2xl border bg-card p-4 text-xs sm:text-sm space-y-1">
+          <p className="font-semibold text-xs text-foreground">Message from partner:</p>
+          <p className="text-muted-foreground text-xs leading-relaxed">{intro.inquiry_message}</p>
+        </div>
+
+        {intro.admin_note && (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs space-y-1">
+            <p className="font-semibold text-amber-600 dark:text-amber-400">WhoIsHot Admin Note:</p>
+            <p className="text-foreground">{intro.admin_note}</p>
+          </div>
+        )}
+
+        {intro.contact_info_shared && (
+          <Badge variant="outline" className="text-xs border-emerald-500/40 text-emerald-500 bg-emerald-500/10 gap-1 py-1 px-2.5">
+            <CheckCircle2 className="size-3.5" /> Contact Info Marked as Shared by Admin
+          </Badge>
+        )}
+
+        {intro.status === 'pending_consent' && (
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <Button
+              className="flex-1 h-11 min-h-[44px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 rounded-xl text-xs sm:text-sm"
+              disabled={respondMutation.isPending}
+              onClick={() => respondMutation.mutate('accept')}
+            >
+              <Check className="size-4" /> Accept Introduction
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 h-11 min-h-[44px] font-medium border-destructive/50 text-destructive hover:bg-destructive/10 rounded-xl text-xs sm:text-sm"
+              disabled={respondMutation.isPending}
+              onClick={() => respondMutation.mutate('decline')}
+            >
+              Decline
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+
 function NoticesTab() {
-  const { data, isLoading } = useQuery({
+  const { data: infoRequests, isLoading: loadingRequests } = useQuery({
     queryKey: ['my-info-requests'],
     queryFn: () => api<MyInfoRequestItem[]>('/users/me/info-requests'),
   })
 
-  if (isLoading) {
+  const { data: partnerIntros, isLoading: loadingIntros } = useQuery({
+    queryKey: ['my-introductions'],
+    queryFn: () => api<PartnerIntroductionItem[]>('/users/me/introductions'),
+  })
+
+  if (loadingRequests || loadingIntros) {
     return (
       <div className="space-y-4">
         {[0, 1].map((i) => (
@@ -1126,11 +1370,14 @@ function NoticesTab() {
     )
   }
 
-  if (!data || data.length === 0) {
+  const hasRequests = infoRequests && infoRequests.length > 0
+  const hasIntros = partnerIntros && partnerIntros.length > 0
+
+  if (!hasRequests && !hasIntros) {
     return (
       <Card className="rounded-2xl border-dashed">
         <CardContent className="py-10 text-center text-muted-foreground">
-          No notices — you're all caught up.
+          No notices or opportunity proposals — you're all caught up.
         </CardContent>
       </Card>
     )
@@ -1138,7 +1385,10 @@ function NoticesTab() {
 
   return (
     <div className="space-y-4">
-      {data.map((notice) => (
+      {hasIntros && partnerIntros.map((intro) => (
+        <PartnerIntroductionCard key={intro.id} intro={intro} />
+      ))}
+      {hasRequests && infoRequests.map((notice) => (
         <NoticeCard key={notice.id} notice={notice} />
       ))}
     </div>
@@ -1156,15 +1406,25 @@ export default function Me() {
     queryFn: () => api<MyInfoRequestItem[]>('/users/me/info-requests'),
     enabled: !!user,
   })
-  const pending = notices?.filter((n) => n.status === 'pending') ?? []
-  const soonest = pending.reduce<MyInfoRequestItem | null>(
+
+  const { data: intros } = useQuery({
+    queryKey: ['my-introductions'],
+    queryFn: () => api<PartnerIntroductionItem[]>('/users/me/introductions'),
+    enabled: !!user,
+  })
+
+  const pendingNotices = notices?.filter((n) => n.status === 'pending') ?? []
+  const pendingIntros = intros?.filter((i) => i.status === 'pending_consent') ?? []
+  const totalPending = pendingNotices.length + pendingIntros.length
+
+  const soonest = pendingNotices.reduce<MyInfoRequestItem | null>(
     (min, n) => (!min || daysLeft(n.deadline_at) < daysLeft(min.deadline_at) ? n : min),
     null,
   )
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-2xl px-4 py-12">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
         <Skeleton className="mb-6 h-9 w-40" />
         <Skeleton className="h-64 w-full rounded-2xl" />
       </main>
@@ -1174,25 +1434,22 @@ export default function Me() {
   if (!user) return <Navigate to="/login" replace />
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-12">
-      <h1 className="mb-6 text-3xl font-bold">My account</h1>
+    <main className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+      <h1 className="mb-6 text-2xl sm:text-3xl font-bold tracking-tight">My account</h1>
 
-      {soonest && (
-        <Alert className="mb-6 border-amber-500/50">
-          <Bell className="text-amber-500" />
-          <AlertTitle>An admin needs a response from you</AlertTitle>
-          <AlertDescription>
-            {(() => {
-              const left = daysLeft(soonest.deadline_at)
-              return left > 0
-                ? `${left} day${left === 1 ? '' : 's'} left to respond${
-                    pending.length > 1 ? ` (${pending.length} notices)` : ''
-                  }.`
-                : 'Due today.'
-            })()}
+      {(soonest || pendingIntros.length > 0) && (
+        <Alert className="mb-6 border-amber-500/50 rounded-2xl bg-amber-500/10">
+          <Bell className="text-amber-500 size-5" />
+          <AlertTitle className="font-bold text-sm sm:text-base">Action required on your account</AlertTitle>
+          <AlertDescription className="text-xs sm:text-sm">
+            {pendingIntros.length > 0
+              ? `You have ${pendingIntros.length} pending partner opportunity proposal${pendingIntros.length > 1 ? 's' : ''}.`
+              : soonest
+              ? `${daysLeft(soonest.deadline_at)} days left to respond to admin notice.`
+              : 'You have pending notices.'}
           </AlertDescription>
           <AlertAction>
-            <Button size="sm" onClick={() => setTab('notices')}>
+            <Button size="sm" onClick={() => setTab('notices')} className="h-9 px-3 rounded-xl text-xs font-semibold">
               View
             </Button>
           </AlertAction>
@@ -1200,18 +1457,18 @@ export default function Me() {
       )}
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-6 w-full">
-          <TabsTrigger value="account" className="flex-1">
+        <TabsList className="mb-6 w-full h-11 p-1 rounded-xl">
+          <TabsTrigger value="account" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
             Account
           </TabsTrigger>
-          <TabsTrigger value="contests" className="flex-1">
+          <TabsTrigger value="contests" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
             My contests
           </TabsTrigger>
-          <TabsTrigger value="notices" className="flex-1">
+          <TabsTrigger value="notices" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
             Notices
-            {pending.length > 0 && (
-              <Badge className="ml-1.5 h-4 min-w-4 justify-center bg-amber-500 px-1 text-white hover:bg-amber-500">
-                {pending.length}
+            {totalPending > 0 && (
+              <Badge className="ml-1.5 h-4 min-w-4 justify-center bg-amber-500 px-1 text-white hover:bg-amber-500 text-[10px] font-bold">
+                {totalPending}
               </Badge>
             )}
           </TabsTrigger>
@@ -1229,3 +1486,5 @@ export default function Me() {
     </main>
   )
 }
+
+
