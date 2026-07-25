@@ -185,7 +185,7 @@ function ShowcaseGrid({
     )
   }
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {entries.map((entry, i) => (
         <ShowcaseCard key={entry.name ?? `real-${i}`} entry={entry} timing={timing} />
       ))}
@@ -221,13 +221,13 @@ export default function Landing() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-16">
-      <section className="flex flex-col items-center gap-6 text-center">
-        <Crown className="size-10 text-primary" />
-        <h1 className="text-5xl font-bold tracking-tight">
+    <main className="mx-auto max-w-5xl px-4 py-8 sm:py-16">
+      <section className="flex flex-col items-center gap-5 text-center">
+        <Crown className="size-10 sm:size-12 text-primary animate-pulse" />
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
           who<span className="text-primary">is</span>hot
         </h1>
-        <p className="max-w-md text-lg text-muted-foreground">
+        <p className="max-w-md text-base sm:text-lg text-muted-foreground leading-relaxed px-2">
           Opt-in campus contests. Join with a code, rate on ten criteria,
           climb the board.
         </p>
@@ -237,9 +237,10 @@ export default function Landing() {
             onChange={(e) => setCode(e.target.value)}
             placeholder="Enter join code, e.g. SUNWAY-CS24"
             aria-label="Join code"
+            className="h-11 text-base sm:text-sm rounded-xl"
           />
-          <Button type="submit" size="icon" aria-label="Go to contest">
-            <ArrowRight />
+          <Button type="submit" className="h-11 w-11 shrink-0 rounded-xl" size="icon" aria-label="Go to contest">
+            <ArrowRight className="size-5" />
           </Button>
         </form>
         {showSearchPreview && <ContestSearchPreview code={typedCode} />}
@@ -249,12 +250,12 @@ export default function Landing() {
       <PopularContests />
 
       {showcaseLoading && (
-        <section className="mt-16">
+        <section className="mt-12 sm:mt-16">
           <Skeleton className="mx-auto mb-1 h-8 w-56" />
           <Skeleton className="mx-auto mb-6 h-4 w-44" />
           <Skeleton className="mb-4 h-10 w-full" />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {[0, 1, 2, 3, 4, 5].map((row) => (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((row) => (
               <Skeleton key={row} className="aspect-3/4 w-full rounded-2xl" />
             ))}
           </div>
@@ -262,7 +263,7 @@ export default function Landing() {
       )}
 
       {showcaseError && (
-        <section className="mt-16">
+        <section className="mt-12 sm:mt-16">
           <Card className="rounded-2xl border-dashed text-center">
             <CardContent className="flex flex-col items-center gap-4 py-10">
               <p className="text-muted-foreground">
@@ -275,32 +276,32 @@ export default function Landing() {
       )}
 
       {showcase && (
-        <section className="mt-16">
-          <h2 className="mb-1 text-center text-2xl font-semibold">
+        <section className="mt-12 sm:mt-16">
+          <h2 className="mb-1 text-center text-xl sm:text-2xl font-semibold">
             {showcase.title}
           </h2>
-          <p className="mb-6 text-center text-sm text-muted-foreground">
+          <p className="mb-6 text-center text-xs sm:text-sm text-muted-foreground">
             Public showcase — real contestants are blurred until you sign in
           </p>
           <Tabs defaultValue="ALL">
-            <TabsList className="mb-4 w-full">
-              <TabsTrigger value="ALL" className="flex-1">
+            <TabsList className="mb-4 w-full h-11 p-1 rounded-xl">
+              <TabsTrigger value="ALL" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                 <span
-                  className="mr-2 inline-block size-2 rounded-full"
+                  className="mr-1.5 inline-block size-2 rounded-full"
                   style={{ backgroundColor: GENERAL }}
                 />
                 General
               </TabsTrigger>
-              <TabsTrigger value="F" className="flex-1">
+              <TabsTrigger value="F" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                 <span
-                  className="mr-2 inline-block size-2 rounded-full"
+                  className="mr-1.5 inline-block size-2 rounded-full"
                   style={{ backgroundColor: FEMALE }}
                 />
                 Ladies
               </TabsTrigger>
-              <TabsTrigger value="M" className="flex-1">
+              <TabsTrigger value="M" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                 <span
-                  className="mr-2 inline-block size-2 rounded-full"
+                  className="mr-1.5 inline-block size-2 rounded-full"
                   style={{ backgroundColor: MALE }}
                 />
                 Gents
@@ -329,19 +330,19 @@ export default function Landing() {
           </Tabs>
 
           <Card className="mt-8 rounded-2xl border-dashed">
-            <CardHeader className="items-center text-center">
+            <CardHeader className="items-center text-center p-6 pb-2">
               <Lock className="mx-auto size-6 text-muted-foreground" />
-              <CardTitle className="text-lg">Full leaderboard is members-only</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Full leaderboard is members-only</CardTitle>
             </CardHeader>
             <CardContent className="flex justify-center pb-6">
               {user ? (
-                <Button asChild>
+                <Button asChild className="h-11 min-h-[44px] px-6 text-sm font-semibold">
                   <Link to={`/contest/${showcase.join_code}/board`}>
                     Open leaderboard
                   </Link>
                 </Button>
               ) : (
-                <Button asChild>
+                <Button asChild className="h-11 min-h-[44px] px-6 text-sm font-semibold">
                   <Link to="/login">Sign in to see every ranking</Link>
                 </Button>
               )}
@@ -352,3 +353,4 @@ export default function Landing() {
     </main>
   )
 }
+
