@@ -77,10 +77,10 @@ function LockedCard({
               </div>
             )}
           </div>
-          <CardContent className="flex items-center justify-between gap-2 bg-muted px-3 py-3">
-            <span className="text-sm text-muted-foreground">Sign in to view</span>
+          <CardContent className="flex items-center justify-between gap-1.5 bg-muted px-2.5 sm:px-3 py-3">
+            <span className="text-xs sm:text-sm text-muted-foreground truncate">Sign in to view</span>
             {entry.score != null && (
-              <Badge variant="secondary" className="shrink-0">
+              <Badge variant="secondary" className="shrink-0 text-[10px] sm:text-xs">
                 {entry.score.toFixed(2)}
               </Badge>
             )}
@@ -97,16 +97,17 @@ function LockedCard({
               members.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Button asChild>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center pt-2">
+            <Button asChild className="h-11 min-h-[44px] rounded-xl font-semibold">
               <Link to="/login">Log in</Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="h-11 min-h-[44px] rounded-xl font-semibold">
               <Link to="/register">Register</Link>
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
     </>
   )
 }
