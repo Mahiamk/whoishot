@@ -325,7 +325,8 @@ export default function Join() {
                 onChange={(e) => setPaymentHandle(e.target.value)}
               />
               <p className="text-[11px] text-muted-foreground">
-                This handle will be used by CampusCrown admins to transfer prize money if you win or issue a refund if applicable.
+                This handle will be used by WhoIsHot admins to transfer prize money if you win or issue a refund if applicable.
+
               </p>
             </div>
 
@@ -373,11 +374,11 @@ export default function Join() {
 
 
   return (
-    <main className="mx-auto max-w-lg px-4 py-12">
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle>Join {joinCode}</CardTitle>
-          <CardDescription>
+    <main className="mx-auto max-w-lg px-4 py-8 sm:py-12">
+      <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+        <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-4 space-y-1.5">
+          <CardTitle className="text-2xl font-bold tracking-tight">Join {joinCode}</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">
             Only name and bracket are required — share as much as you like.
             You can remove your profile at any time.
           </CardDescription>
@@ -385,7 +386,7 @@ export default function Join() {
             <Countdown
               endsAt={contestTiming.ends_at}
               status={contestTiming.status}
-              className="mt-1"
+              className="mt-1 text-xs sm:text-sm font-semibold"
             />
           )}
           <CardAction>
@@ -395,12 +396,13 @@ export default function Join() {
               size="icon-sm"
               aria-label="Cancel and go back"
               onClick={goBack}
+              className="h-9 w-9 rounded-xl"
             >
-              <X />
+              <X className="size-4" />
             </Button>
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 sm:p-8 pt-0">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               {contestTiming?.requires_password && (
@@ -409,12 +411,13 @@ export default function Join() {
                   name="contest_password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contest password *</FormLabel>
+                      <FormLabel className="text-sm font-medium">Contest password *</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
                           placeholder="Ask the contest creator"
                           {...field}
+                          className="h-11 text-base sm:text-sm rounded-xl"
                         />
                       </FormControl>
                       <FormMessage />
@@ -423,17 +426,18 @@ export default function Join() {
                 />
               )}
               <div className="flex items-center gap-4">
-                <Avatar className="size-20">
+                <Avatar className="size-16 sm:size-20 shrink-0">
                   {preview && <AvatarImage src={preview} alt="Photo preview" />}
-                  <AvatarFallback>📷</AvatarFallback>
+                  <AvatarFallback className="text-xl sm:text-2xl">📷</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-1">
-                  <FormLabel>Photo (optional)</FormLabel>
+                  <FormLabel className="text-sm font-medium">Photo (optional)</FormLabel>
                   <Input
                     ref={fileInputRef}
                     type="file"
                     accept={PHOTO_TYPES.join(',')}
                     onChange={(e) => onPhotoChange(e.target.files)}
+                    className="h-11 text-xs sm:text-sm rounded-xl cursor-pointer file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary"
                   />
                 </div>
               </div>
@@ -443,9 +447,9 @@ export default function Join() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name *</FormLabel>
+                    <FormLabel className="text-sm font-medium">Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="How should we call you?" {...field} />
+                      <Input placeholder="How should we call you?" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -457,20 +461,20 @@ export default function Join() {
                 name="gender_category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bracket *</FormLabel>
+                    <FormLabel className="text-sm font-medium">Bracket *</FormLabel>
                     <FormControl>
                       <Tabs value={field.value} onValueChange={field.onChange}>
-                        <TabsList className="w-full">
-                          <TabsTrigger value="F" className="flex-1">
+                        <TabsList className="w-full h-11 p-1 rounded-xl">
+                          <TabsTrigger value="F" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                             <span
-                              className="mr-2 inline-block size-2 rounded-full"
+                              className="mr-1.5 inline-block size-2 rounded-full"
                               style={{ backgroundColor: FEMALE }}
                             />
                             Ladies
                           </TabsTrigger>
-                          <TabsTrigger value="M" className="flex-1">
+                          <TabsTrigger value="M" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
                             <span
-                              className="mr-2 inline-block size-2 rounded-full"
+                              className="mr-1.5 inline-block size-2 rounded-full"
                               style={{ backgroundColor: MALE }}
                             />
                             Gents
@@ -483,15 +487,15 @@ export default function Join() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <FormField
                   control={form.control}
                   name="age"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Age</FormLabel>
+                      <FormLabel className="text-sm font-medium">Age</FormLabel>
                       <FormControl>
-                        <Input inputMode="numeric" placeholder="21" {...field} />
+                        <Input inputMode="numeric" placeholder="21" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -502,9 +506,9 @@ export default function Join() {
                   name="country"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Country</FormLabel>
+                      <FormLabel className="text-sm font-medium">Country</FormLabel>
                       <FormControl>
-                        <Input placeholder="Malaysia" {...field} />
+                        <Input placeholder="Malaysia" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -517,9 +521,9 @@ export default function Join() {
                 name="hobbies"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Hobbies</FormLabel>
+                    <FormLabel className="text-sm font-medium">Hobbies</FormLabel>
                     <FormControl>
-                      <Input placeholder="futsal, baking, chess" {...field} />
+                      <Input placeholder="futsal, baking, chess" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -530,9 +534,9 @@ export default function Join() {
                 name="fav_things"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Favourite things</FormLabel>
+                    <FormLabel className="text-sm font-medium">Favourite things</FormLabel>
                     <FormControl>
-                      <Input placeholder="matcha, night markets" {...field} />
+                      <Input placeholder="matcha, night markets" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -543,10 +547,11 @@ export default function Join() {
                 name="relationship_status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Relationship status</FormLabel>
+                    <FormLabel className="text-sm font-medium">Relationship status</FormLabel>
                     <FormControl>
-                      <Input placeholder="single / taken / it's complicated" {...field} />
+                      <Input placeholder="single / taken / it's complicated" {...field} className="h-11 text-base sm:text-sm rounded-xl" />
                     </FormControl>
+
                     <FormMessage />
                   </FormItem>
                 )}
