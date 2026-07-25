@@ -65,7 +65,8 @@ PAYLOAD_BOA_JSON = {
         "upstreamStatus": "Success",
         "totalAmount": 90.0,
         "currency": "ETB",
-        "receiverName": "CampusCrown Platform",
+        "receiverName": "WhoIsHot Platform",
+
     },
 }
 
