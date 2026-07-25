@@ -99,6 +99,28 @@ class PayoutRowStatus(str, enum.Enum):
     failed = "failed"
 
 
+class InquiryType(str, enum.Enum):
+    modeling_school = "modeling_school"
+    fashion_show = "fashion_show"
+    stylist = "stylist"
+    other = "other"
+
+
+class InquiryStatus(str, enum.Enum):
+    new = "new"
+    reviewing = "reviewing"
+    matched = "matched"
+    closed = "closed"
+
+
+class IntroductionStatus(str, enum.Enum):
+    pending_consent = "pending_consent"
+    accepted = "accepted"
+    declined = "declined"
+    expired = "expired"
+
+
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -157,6 +179,9 @@ class User(Base):
     # Country preference (editable by user in profile) & detected country (informational from IP)
     country: Mapped[str | None] = mapped_column(String(50), nullable=True)
     detected_country: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    email_opt_out: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
 
     contests_created: Mapped[list["Contest"]] = relationship(back_populates="creator")
     contestant_entries: Mapped[list["Contestant"]] = relationship(back_populates="user")
@@ -195,6 +220,13 @@ class Contest(Base):
     extended_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    reminder_24h_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reminder_1h_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Both nullable only for contests created before participation
     # protection existed (grandfathered = unrestricted). New contests must
     # set both at creation (enforced by ContestCreate).
@@ -251,6 +283,9 @@ class Contestant(Base):
     is_demo: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=false()
     )
+    open_to_opportunities: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
 
     user: Mapped["User | None"] = relationship(back_populates="contestant_entries")
     contest: Mapped["Contest"] = relationship(back_populates="contestants")
@@ -259,6 +294,7 @@ class Contestant(Base):
     )
     ratings: Mapped[list["Rating"]] = relationship(back_populates="contestant")
     reports: Mapped[list["Report"]] = relationship(back_populates="contestant")
+
 
 
 class SocialLink(Base):
@@ -519,3 +555,93 @@ class Payout(Base):
 
     contest: Mapped["Contest"] = relationship(back_populates="payouts")
     contestant: Mapped["Contestant | None"] = relationship()
+
+
+class PartnerInquiry(Base):
+    __tablename__ = "partner_inquiries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    contact_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    inquiry_type: Mapped[InquiryType] = mapped_column(
+        Enum(InquiryType), nullable=False, default=InquiryType.other, server_default="other"
+    )
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    interested_in: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[InquiryStatus] = mapped_column(
+        Enum(InquiryStatus),
+        nullable=False,
+        default=InquiryStatus.new,
+        server_default="new",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    introductions: Mapped[list["PartnerIntroduction"]] = relationship(
+        back_populates="inquiry", cascade="all, delete-orphan"
+    )
+
+
+class PartnerIntroduction(Base):
+    __tablename__ = "partner_introductions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    inquiry_id: Mapped[int] = mapped_column(
+        ForeignKey("partner_inquiries.id"), nullable=False
+    )
+    contestant_id: Mapped[int] = mapped_column(
+        ForeignKey("contestants.id"), nullable=False
+    )
+    admin_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), nullable=False
+    )
+    status: Mapped[IntroductionStatus] = mapped_column(
+        Enum(IntroductionStatus),
+        nullable=False,
+        default=IntroductionStatus.pending_consent,
+        server_default="pending_consent",
+    )
+    admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    contact_info_shared: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+    shared_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    responded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deadline_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: utcnow() + timedelta(days=14),
+    )
+
+    inquiry: Mapped["PartnerInquiry"] = relationship(back_populates="introductions")
+    contestant: Mapped["Contestant"] = relationship()
+    admin: Mapped["User"] = relationship()
+
+
+class EmailLog(Base):
+    __tablename__ = "email_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    to_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    template_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    context: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    resend_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="sent")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    user: Mapped["User | None"] = relationship()
+
+
