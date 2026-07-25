@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Select,
@@ -99,7 +101,8 @@ export default function AuditLog() {
 
       {data && data.items.length > 0 && (
         <>
-          <Table>
+          {/* Desktop Table View */}
+          <Table className="hidden md:table">
             <TableHeader>
               <TableRow>
                 <TableHead>When</TableHead>
@@ -127,16 +130,43 @@ export default function AuditLog() {
               ))}
             </TableBody>
           </Table>
-          <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+
+          {/* Mobile Stacked Card View */}
+          <div className="space-y-3 md:hidden">
+            {data.items.map((row) => (
+              <Card key={row.id} className="rounded-2xl border-border/70 p-4 space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge variant="outline" className="font-mono text-[10px] border-primary/40 text-primary bg-primary/10">
+                    {row.action}
+                  </Badge>
+                  <span className="text-muted-foreground text-[10px]">
+                    {new Date(row.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Admin: <strong className="text-foreground">{row.admin_email}</strong></span>
+                  <span>Target: {row.target_type} #{row.target_id}</span>
+                </div>
+                {row.detail && (
+                  <p className="rounded-xl border bg-muted/40 p-2 text-[11px] font-mono text-muted-foreground break-all">
+                    {JSON.stringify(row.detail)}
+                  </p>
+                )}
+              </Card>
+            ))}
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>
               Page {data.page} of {totalPages} · {data.total} total
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
+                className="h-10 min-h-[40px] px-4 font-medium rounded-xl"
               >
                 Previous
               </Button>
@@ -145,6 +175,7 @@ export default function AuditLog() {
                 size="sm"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
+                className="h-10 min-h-[40px] px-4 font-medium rounded-xl"
               >
                 Next
               </Button>
@@ -152,6 +183,7 @@ export default function AuditLog() {
           </div>
         </>
       )}
+
     </div>
   )
 }

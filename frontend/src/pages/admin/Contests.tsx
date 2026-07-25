@@ -114,10 +114,12 @@ function ContestRow({ contest }: { contest: AdminContestItem }) {
 }
 
 export default function Contests() {
+  const queryClient = useQueryClient()
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin', 'contests'],
     queryFn: () => api<AdminContestItem[]>('/admin/contests'),
   })
+
 
   return (
     <div>
@@ -148,25 +150,81 @@ export default function Contests() {
       )}
 
       {data && data.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Join code</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Creator</TableHead>
-              <TableHead>Contestants</TableHead>
-              <TableHead>Ratings</TableHead>
-              <TableHead>Open reports</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Desktop Table View */}
+          <Table className="hidden md:table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Join code</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Creator</TableHead>
+                <TableHead>Contestants</TableHead>
+                <TableHead>Ratings</TableHead>
+                <TableHead>Open reports</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.map((c) => (
+                <ContestRow key={c.id} contest={c} />
+              ))}
+            </TableBody>
+          </Table>
+
+          {/* Mobile Stacked Card View */}
+          <div className="space-y-3 md:hidden">
             {data.map((c) => (
-              <ContestRow key={c.id} contest={c} />
+              <Card key={c.id} className="rounded-2xl border-border/70 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <Link to={`/admin/contests/${c.id}`} className="font-bold text-base hover:underline text-foreground block">
+                      {c.title}
+                    </Link>
+                    <p className="text-xs font-mono text-primary font-semibold">Code: {c.join_code}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={c.is_active}
+                      disabled={!c.is_active}
+                      onCheckedChange={() => {
+                        api(`/admin/contests/${c.id}/deactivate`, { method: 'POST' })
+                          .then(() => {
+                            toast.success(`${c.join_code} deactivated`)
+                            queryClient.invalidateQueries({ queryKey: ['admin', 'contests'] })
+                          })
+                          .catch((err) => toast.error(err instanceof Error ? err.message : 'Could not deactivate'))
+                      }}
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {c.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 border-t border-border/40 pt-2 text-center text-xs">
+                  <div className="bg-muted/30 p-2 rounded-xl border border-border/40">
+                    <span className="text-muted-foreground block text-[10px]">Contestants</span>
+                    <span className="font-bold text-foreground">{c.contestant_count}</span>
+                  </div>
+                  <div className="bg-muted/30 p-2 rounded-xl border border-border/40">
+                    <span className="text-muted-foreground block text-[10px]">Ratings</span>
+                    <span className="font-bold text-foreground">{c.rating_count}</span>
+                  </div>
+                  <div className="bg-muted/30 p-2 rounded-xl border border-border/40">
+                    <span className="text-muted-foreground block text-[10px]">Open Reports</span>
+                    {c.open_report_count > 0 ? (
+                      <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">{c.open_report_count}</Badge>
+                    ) : (
+                      <span className="font-semibold text-muted-foreground">0</span>
+                    )}
+                  </div>
+                </div>
+              </Card>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        </>
       )}
+
     </div>
   )
 }
