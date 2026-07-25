@@ -95,7 +95,8 @@ def verify_manual_payment(
     record.verify_raw_response = parsed.get("verify_raw_response")
     record.verified_at = utcnow()
 
-    # CampusCrown Duplicate Check: same (provider_key, reference) pair twice auto-rejects
+    # WhoIsHot Duplicate Check: same (provider_key, reference) pair twice auto-rejects
+
     if check_duplicate_payment(db, record, record.verify_provider_key, record.verify_reference):
         if isinstance(record, Subscription):
             record.status = SubscriptionStatus.rejected
