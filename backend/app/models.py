@@ -249,15 +249,39 @@ class Contest(Base):
         default=PayoutStatus.open,
         server_default="open",
     )
-
     creator: Mapped["User"] = relationship(back_populates="contests_created")
     contestants: Mapped[list["Contestant"]] = relationship(back_populates="contest")
     entry_payments: Mapped[list["EntryPayment"]] = relationship(back_populates="contest")
     payouts: Mapped[list["Payout"]] = relationship(back_populates="contest")
+    criteria: Mapped[list["ContestCriterion"]] = relationship(
+        back_populates="contest",
+        order_by="ContestCriterion.sort_order",
+        cascade="all, delete-orphan",
+    )
 
     @property
     def requires_password(self) -> bool:
         return self.join_password_hash is not None
+
+
+class ContestCriterion(Base):
+    __tablename__ = "contest_criteria"
+    __table_args__ = (
+        UniqueConstraint("contest_id", "key"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    contest_id: Mapped[int] = mapped_column(ForeignKey("contests.id"), nullable=False)
+    key: Mapped[str] = mapped_column(String(50), nullable=False)
+    label: Mapped[str] = mapped_column(String(30), nullable=False)
+    emoji: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    contest: Mapped["Contest"] = relationship(back_populates="criteria")
+    ratings: Mapped[list["Rating"]] = relationship(back_populates="criterion")
 
 
 class Contestant(Base):
@@ -313,7 +337,7 @@ class SocialLink(Base):
 class Rating(Base):
     __tablename__ = "ratings"
     __table_args__ = (
-        UniqueConstraint("voter_id", "contestant_id", "criterion"),
+        UniqueConstraint("voter_id", "contestant_id", "criterion_id"),
         CheckConstraint("score >= 1 AND score <= 10", name="score_range"),
     )
 
@@ -322,11 +346,14 @@ class Rating(Base):
     contestant_id: Mapped[int] = mapped_column(
         ForeignKey("contestants.id"), nullable=False
     )
-    criterion: Mapped[str] = mapped_column(String(50), nullable=False)
+    criterion_id: Mapped[int] = mapped_column(
+        ForeignKey("contest_criteria.id"), nullable=False
+    )
     score: Mapped[int] = mapped_column(Integer, nullable=False)
 
     voter: Mapped["User"] = relationship(back_populates="ratings_given")
     contestant: Mapped["Contestant"] = relationship(back_populates="ratings")
+    criterion: Mapped["ContestCriterion"] = relationship(back_populates="ratings")
 
 
 class Report(Base):
