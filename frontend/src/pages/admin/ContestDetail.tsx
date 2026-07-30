@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Star, Users, ChevronRight } from 'lucide-react'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,6 +17,8 @@ import {
 } from '@/components/ui/table'
 import { api } from '@/lib/api'
 import { bracketColor } from '@/lib/brackets'
+import { CriteriaEditor } from '@/components/CriteriaEditor'
+import type { ContestCriterion } from '@/lib/criteria'
 import type { AdminContestantDetail, AdminContestItem } from './types'
 
 function statusColor(s: string) {
@@ -40,6 +44,45 @@ export default function ContestDetail() {
   })
 
   const contest = contestsQuery.data?.find((c) => String(c.id) === contestId)
+
+  const detailQuery = useQuery({
+    queryKey: ['admin', 'contest-detail', contest?.join_code],
+    queryFn: () => api<any>(`/contests/${contest?.join_code}`),
+    enabled: !!contest?.join_code,
+  })
+
+  const [criteria, setCriteria] = useState<ContestCriterion[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (detailQuery.data?.criteria) {
+      setCriteria(detailQuery.data.criteria)
+    }
+  }, [detailQuery.data])
+
+  async function handleSaveCriteria() {
+    if (!contest?.join_code) return
+    setIsSaving(true)
+    try {
+      await api(`/contests/${contest.join_code}/criteria`, {
+        method: 'PATCH',
+        body: JSON.stringify(
+          criteria.map((c, idx) => ({
+            label: c.label,
+            emoji: c.emoji || null,
+            key: c.key || null,
+            sort_order: idx,
+          }))
+        ),
+      })
+      toast.success('Contest criteria updated successfully')
+      detailQuery.refetch()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update criteria')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const isLoading = contestsQuery.isLoading || contestantsQuery.isLoading
   const isError = contestsQuery.isError || contestantsQuery.isError
@@ -114,6 +157,25 @@ export default function ContestDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Contest Criteria Card */}
+      {contest && (
+        <Card className="rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-lg">Contest Criteria</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CriteriaEditor
+              value={criteria}
+              onChange={setCriteria}
+              isLocked={contest.rating_count > 0}
+              onSave={handleSaveCriteria}
+              isSaving={isSaving}
+            />
+          </CardContent>
+        </Card>
+      )}
+
 
       {/* Contestants table */}
       <Card className="rounded-2xl">
