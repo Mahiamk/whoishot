@@ -27,6 +27,9 @@ import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
+import { CriteriaEditor } from '@/components/CriteriaEditor'
+import { DEFAULT_CRITERIA_SUGGESTIONS, type ContestCriterion } from '@/lib/criteria'
+
 
 const DURATIONS = ['3', '7', '14', '30'] as const
 
@@ -85,6 +88,7 @@ function maxDateISO(): string {
 
 export function CreateContestDialog() {
   const [open, setOpen] = useState(false)
+  const [criteria, setCriteria] = useState<ContestCriterion[]>(DEFAULT_CRITERIA_SUGGESTIONS)
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -117,6 +121,11 @@ export function CreateContestDialog() {
   const endDate = computeEndDate({ duration, customDate })
 
   async function onSubmit(values: CreateContestValues) {
+    if (criteria.length < 3 || criteria.length > 15) {
+      toast.error('Contest criteria must be between 3 and 15 items')
+      return
+    }
+
     try {
       const contest = await api<ContestResponse>('/contests', {
         method: 'POST',
@@ -128,6 +137,12 @@ export function CreateContestDialog() {
           is_showcase_public: values.is_showcase_public,
           entry_fee_cents: Math.round(values.entry_fee * 100),
           liability_accepted: values.liability_accepted,
+          criteria: criteria.map((c, i) => ({
+            label: c.label,
+            emoji: c.emoji || null,
+            key: c.key || null,
+            sort_order: i,
+          })),
           ...(values.duration === 'custom'
             ? { ends_at: new Date(`${values.customDate}T23:59:59Z`).toISOString() }
             : { duration_days: Number(values.duration) }),
@@ -140,6 +155,7 @@ export function CreateContestDialog() {
       toast.error(err instanceof Error ? err.message : 'Could not create contest')
     }
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -381,10 +397,14 @@ export function CreateContestDialog() {
                 </FormItem>
               )}
             />
+            <div className="rounded-xl border p-4 bg-muted/20">
+              <CriteriaEditor value={criteria} onChange={setCriteria} />
+            </div>
+
             <Button
               type="submit"
               className="w-full h-11 min-h-[44px] rounded-xl font-semibold text-base sm:text-sm"
-              disabled={form.formState.isSubmitting}
+              disabled={form.formState.isSubmitting || criteria.length < 3 || criteria.length > 15}
             >
               {form.formState.isSubmitting ? 'Creating…' : 'Create contest'}
             </Button>
