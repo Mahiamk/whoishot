@@ -56,7 +56,7 @@ def compute_contest_payouts(db: Session, contest: Contest) -> None:
             Contestant.status == ContestantStatus.active,
             User.is_banned == False,  # noqa: E712
         )
-        .group_by(Rating.contestant_id, Rating.criterion)
+        .group_by(Rating.contestant_id, Rating.criterion_id)
         .all()
     )
     crit_avgs: dict[int, list[float]] = {}
