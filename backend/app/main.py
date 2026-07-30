@@ -12,6 +12,14 @@ from app.routers import admin, auth, contestants, contests, entries, geo, media,
 from app.routers.media import MEDIA_DIR
 
 
+@api_router.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "service": "WhoIsHot API"
+    }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import logging
