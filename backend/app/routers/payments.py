@@ -9,8 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from app.config import get_settings
 from app.deps import get_current_user
 from app.models import User
-from app.routers.media import MEDIA_DIR
 from app.schemas import ManualPaymentInfoRead
+from app.services.storage_service import MEDIA_DIR, upload_file
+
+
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -63,17 +65,15 @@ async def upload_receipt(
     # Compute SHA256 hash
     receipt_hash = hashlib.sha256(content).hexdigest()
 
-    RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "receipt.png").suffix or ".png"
     if ext.lower() not in {".jpg", ".jpeg", ".png", ".webp", ".pdf"}:
         ext = ".png"
 
     filename = f"{uuid.uuid4().hex[:16]}{ext}"
-    dest = RECEIPTS_DIR / filename
-    dest.write_bytes(content)
+    url = upload_file(content, f"receipts/{filename}", file.content_type or "application/octet-stream")
 
-    url = f"/media/receipts/{filename}"
-    return {"url": url, "hash": receipt_hash, "file_path": str(dest)}
+    return {"url": url, "hash": receipt_hash, "file_path": url}
+
 
 
 @router.post("/upload-receipt-image", status_code=status.HTTP_201_CREATED)
