@@ -33,7 +33,6 @@ import { Confetti } from '@/components/Confetti'
 import { useAuth } from '@/context/AuthContext'
 import { api, rememberContest } from '@/lib/api'
 import { FEMALE, GENERAL, MALE } from '@/lib/brackets'
-import { CRITERIA } from '@/lib/criteria'
 
 interface PodiumEntry {
   contestant_id: number
@@ -191,6 +190,14 @@ export default function Board() {
       .slice()
       .sort((a, b) => [1, 0, 2][a.rank - 1] - [1, 0, 2][b.rank - 1]) ?? []
 
+  const { data: contestData } = useQuery({
+    queryKey: ['contest', joinCode],
+    queryFn: () => api<any>(`/contests/${joinCode}`),
+    enabled: !!joinCode && !!user,
+  })
+
+  const criteriaOptions = contestData?.criteria || []
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
       {showConfetti && <Confetti />}
@@ -239,9 +246,9 @@ export default function Board() {
           </SelectTrigger>
           <SelectContent className="rounded-xl">
             <SelectItem value="overall">Overall</SelectItem>
-            {CRITERIA.map((c) => (
-              <SelectItem key={c} value={c} className="capitalize">
-                {c}
+            {criteriaOptions.map((c: any) => (
+              <SelectItem key={c.key} value={c.key} className="capitalize">
+                {c.emoji ? `${c.emoji} ` : ''}{c.label}
               </SelectItem>
             ))}
           </SelectContent>
