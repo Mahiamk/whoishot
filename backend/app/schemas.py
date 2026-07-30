@@ -118,6 +118,24 @@ class GoogleLoginResponse(BaseModel):
 
 # --- contests ---
 
+class ContestCriterionCreate(BaseModel):
+    label: str = Field(min_length=1, max_length=30)
+    emoji: str | None = Field(default=None, max_length=20)
+    key: str | None = Field(default=None, max_length=50)
+    sort_order: int | None = None
+
+
+class ContestCriterionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    contest_id: int
+    key: str
+    label: str
+    emoji: str | None = None
+    sort_order: int
+
+
 class ContestCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
@@ -129,6 +147,7 @@ class ContestCreate(BaseModel):
     # Monetization: contest entry fee
     entry_fee_cents: int = Field(default=0, ge=0)
     liability_accepted: bool = False
+    criteria: list[ContestCriterionCreate] | None = None
 
     @field_validator("allowed_email_domain")
     @classmethod
@@ -168,6 +187,9 @@ class ContestCreate(BaseModel):
             raise ValueError(
                 "You must accept the liability terms for paid entry contests"
             )
+        if self.criteria is not None:
+            if not (3 <= len(self.criteria) <= 15):
+                raise ValueError("Contest criteria count must be between 3 and 15")
         return self
 
 
@@ -193,11 +215,13 @@ class ContestRead(BaseModel):
     currency: str = "MYR"
     payout_status: PayoutStatus = PayoutStatus.open
     prize_pool_cents: int = 0
+    criteria: list[ContestCriterionRead] = []
 
 
 class ContestWithCounts(ContestRead):
     contestant_count: int
     female_count: int
+
     male_count: int
     rating_count: int
 
@@ -631,14 +655,10 @@ class RatingsUpsert(RootModel[dict[str, int]]):
         if not v:
             raise ValueError("At least one rating is required")
         for criterion, score in v.items():
-            if criterion not in CRITERIA:
-                raise ValueError(
-                    f"Unknown criterion '{criterion}'; must be one of: "
-                    f"{', '.join(CRITERIA)}"
-                )
             if not 1 <= score <= 10:
                 raise ValueError(f"Score for '{criterion}' must be between 1 and 10")
         return v
+
 
 
 # --- registration email policy ---
