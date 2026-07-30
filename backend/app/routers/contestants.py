@@ -9,6 +9,7 @@ from app.email import send_email
 from app.ratelimit import RATING_LIMIT, limiter
 
 from app.models import (
+    ContestCriterion,
     Contestant,
     ContestantStatus,
     ContestStatus,
@@ -257,13 +258,14 @@ def get_contestant_profile(
     contest = check_contest_expiry(db, contestant.contest)
 
     criterion_rows = (
-        db.query(Rating.criterion, func.avg(Rating.score))
+        db.query(ContestCriterion.key, func.avg(Rating.score))
+        .join(ContestCriterion, Rating.criterion_id == ContestCriterion.id)
         .join(User, Rating.voter_id == User.id)
         .filter(
             Rating.contestant_id == contestant.id,
             User.is_banned == False,  # noqa: E712
         )
-        .group_by(Rating.criterion)
+        .group_by(ContestCriterion.key)
         .all()
     )
     criterion_averages = {c: round(float(a), 2) for c, a in criterion_rows}
@@ -282,13 +284,16 @@ def get_contestant_profile(
         if criterion_averages and vote_count >= MIN_VOTES_FOR_AVG
         else None
     )
-    my_ratings = {
-        r.criterion: r.score
-        for r in db.query(Rating).filter(
+    my_ratings_rows = (
+        db.query(ContestCriterion.key, Rating.score)
+        .join(ContestCriterion, Rating.criterion_id == ContestCriterion.id)
+        .filter(
             Rating.voter_id == current_user.id,
             Rating.contestant_id == contestant.id,
         )
-    }
+        .all()
+    )
+    my_ratings = {key: score for key, score in my_ratings_rows}
 
     social_link_count = len(contestant.social_links)
 
@@ -356,6 +361,14 @@ def upsert_ratings(
             detail="This contest has ended — ratings are closed",
         )
 
+    contest_criteria = {c.key: c.id for c in contestant.contest.criteria}
+    for criterion_key in payload.root.keys():
+        if criterion_key not in contest_criteria:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Unknown criterion '{criterion_key}' for this contest",
+            )
+
     is_first_vote_in_contest = (
         db.query(Rating.id)
         .join(Contestant, Rating.contestant_id == Contestant.id)
@@ -365,21 +378,22 @@ def upsert_ratings(
     )
 
     existing = {
-        r.criterion: r
+        r.criterion_id: r
         for r in db.query(Rating).filter(
             Rating.voter_id == current_user.id,
             Rating.contestant_id == contestant.id,
         )
     }
-    for criterion, score in payload.root.items():
-        if criterion in existing:
-            existing[criterion].score = score
+    for criterion_key, score in payload.root.items():
+        crit_id = contest_criteria[criterion_key]
+        if crit_id in existing:
+            existing[crit_id].score = score
         else:
             db.add(
                 Rating(
                     voter_id=current_user.id,
                     contestant_id=contestant.id,
-                    criterion=criterion,
+                    criterion_id=crit_id,
                     score=score,
                 )
             )
@@ -400,14 +414,17 @@ def upsert_ratings(
             is_transactional_required=False,
         )
 
-
-    return {
-        r.criterion: r.score
-        for r in db.query(Rating).filter(
+    res_rows = (
+        db.query(ContestCriterion.key, Rating.score)
+        .join(ContestCriterion, Rating.criterion_id == ContestCriterion.id)
+        .filter(
             Rating.voter_id == current_user.id,
             Rating.contestant_id == contestant.id,
         )
-    }
+        .all()
+    )
+    return {key: score for key, score in res_rows}
+
 
 
 @router.post(
