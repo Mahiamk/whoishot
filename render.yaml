@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: whoishot-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    region: oregon
+    plan: free
+    healthCheckPath: /api/v1/health
