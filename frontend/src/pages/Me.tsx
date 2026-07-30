@@ -58,7 +58,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { bracketColor } from '@/lib/brackets'
-import { CRITERIA } from '@/lib/criteria'
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -969,7 +968,7 @@ function MyContestantCard({ entry }: { entry: MyContestantEntry }) {
       toast.error(err instanceof Error ? err.message : 'Could not remove profile'),
   })
 
-  const rankedCriteria = CRITERIA.filter((c) => c in entry.criterion_averages)
+  const rankedCriteria = Object.keys(entry.criterion_averages)
 
   return (
     <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
