@@ -42,7 +42,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/api'
 import { bracketColor } from '@/lib/brackets'
-import { CRITERIA } from '@/lib/criteria'
+import type { ContestCriterion } from '@/lib/criteria'
 
 interface Profile {
   id: number
@@ -77,11 +77,15 @@ function initials(name: string): string {
     .toUpperCase()
 }
 
-function defaultScores(myRatings: Record<string, number>): Record<string, number> {
-  return Object.fromEntries(
-    CRITERIA.map((c) => [c, myRatings[c] ?? 5]),
-  ) as Record<string, number>
+function defaultScores(myRatings: Record<string, number>, criteriaList: ContestCriterion[]): Record<string, number> {
+  const result: Record<string, number> = {}
+  for (const c of criteriaList) {
+    const k = c.key || c.label
+    result[k] = myRatings[k] ?? 5
+  }
+  return result
 }
+
 
 function ReportDialog({ contestantId }: { contestantId: number }) {
   const [open, setOpen] = useState(false)
@@ -178,6 +182,16 @@ export default function ContestantProfile() {
     retry: false,
   })
 
+  const { data: contestData } = useQuery({
+    queryKey: ['contest', profile?.contest_id],
+    queryFn: () => api<any>(`/contests/${profile?.contest_id}`),
+    enabled: !!profile?.contest_id,
+  })
+
+  const criteriaList: ContestCriterion[] = contestData?.criteria?.length
+    ? contestData.criteria
+    : Object.keys(profile?.criterion_averages || {}).map((k) => ({ key: k, label: k }))
+
   // Reset slider state when switching contestants so values never carry
   // over from a previously viewed profile.
   useEffect(() => {
@@ -186,17 +200,18 @@ export default function ContestantProfile() {
   }, [contestantId])
 
   useEffect(() => {
-    if (profile && scores === null) {
-      const initial = defaultScores(profile.my_ratings)
+    if (profile && criteriaList.length > 0 && scores === null) {
+      const initial = defaultScores(profile.my_ratings, criteriaList)
       setScores(initial)
       setBaseline(initial)
     }
-  }, [profile, scores])
+  }, [profile, criteriaList, scores])
 
   const isDirty =
     scores != null &&
     baseline != null &&
-    CRITERIA.some((c) => scores[c] !== baseline[c])
+    criteriaList.some((c) => scores[c.key || c.label] !== baseline[c.key || c.label])
+
 
   function closeRatingPanel() {
     if (isDirty) {
@@ -406,13 +421,15 @@ export default function ContestantProfile() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {CRITERIA.map((criterion) => {
-              const value = scores[criterion]
+            {criteriaList.map((crit) => {
+              const criterion = crit.key || crit.label
+              const value = scores[criterion] ?? 5
               return (
                 <div key={criterion} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium capitalize">
-                      {criterion}
+                    <span className="text-sm font-medium capitalize flex items-center gap-1.5">
+                      {crit.emoji && <span>{crit.emoji}</span>}
+                      <span>{crit.label}</span>
                     </span>
                     <span className="flex items-center gap-2">
                       {profile.criterion_averages[criterion] != null && (
@@ -459,36 +476,41 @@ export default function ContestantProfile() {
           </CardHeader>
           <CardContent className="p-6 sm:p-8 pt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-              {CRITERIA.map((criterion) => (
-                <div key={criterion} className="space-y-2.5 p-3 rounded-2xl bg-muted/30 border border-border/40">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm font-semibold capitalize text-foreground">
-                      {criterion}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      {profile.criterion_averages[criterion] != null && (
-                        <span className="text-[11px] text-muted-foreground">
-                          avg {profile.criterion_averages[criterion].toFixed(1)}
-                        </span>
-                      )}
-                      <Badge className="w-8 h-6 justify-center bg-amber-500 text-white hover:bg-amber-500 font-bold text-xs">
-                        {scores[criterion]}
-                      </Badge>
-                    </span>
+              {criteriaList.map((crit) => {
+                const criterion = crit.key || crit.label
+                const value = scores[criterion] ?? 5
+                return (
+                  <div key={criterion} className="space-y-2.5 p-3 rounded-2xl bg-muted/30 border border-border/40">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs sm:text-sm font-semibold capitalize text-foreground flex items-center gap-1.5">
+                        {crit.emoji && <span>{crit.emoji}</span>}
+                        <span>{crit.label}</span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        {profile.criterion_averages[criterion] != null && (
+                          <span className="text-[11px] text-muted-foreground">
+                            avg {profile.criterion_averages[criterion].toFixed(1)}
+                          </span>
+                        )}
+                        <Badge className="w-8 h-6 justify-center bg-amber-500 text-white hover:bg-amber-500 font-bold text-xs">
+                          {value}
+                        </Badge>
+                      </span>
+                    </div>
+                    <div className="py-2 px-1">
+                      <Slider
+                        min={1}
+                        max={10}
+                        step={1}
+                        value={[value]}
+                        onValueChange={([v]) =>
+                          setScores((prev) => ({ ...prev!, [criterion]: v }))
+                        }
+                      />
+                    </div>
                   </div>
-                  <div className="py-2 px-1">
-                    <Slider
-                      min={1}
-                      max={10}
-                      step={1}
-                      value={[scores[criterion]]}
-                      onValueChange={([v]) =>
-                        setScores((prev) => ({ ...prev!, [criterion]: v }))
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
+                )
+              })}
               <Button
                 className="col-span-1 sm:col-span-2 w-full h-11 min-h-[44px] text-sm font-semibold rounded-xl mt-3"
                 onClick={() => rateMutation.mutate(scores)}
