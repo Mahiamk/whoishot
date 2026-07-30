@@ -63,6 +63,14 @@ class Settings(BaseSettings):
     CHAPA_WEBHOOK_SECRET: str | None = None
     CHAPA_API_URL: str = "https://api.chapa.co/v1"
 
+    # Cloudflare R2 Object Storage credentials
+    R2_ENDPOINT: str | None = None
+    R2_BUCKET: str | None = None
+    R2_ACCESS_KEY: str | None = None
+    R2_SECRET_KEY: str | None = None
+    R2_PUBLIC_URL: str | None = None
+
+
 
     # Manual payment destinations (bank / TnG transfer details)
     MANUAL_PAYMENT_INFO: str = '{"bank_name": "Maybank", "account_no": "1234-5678-9012", "account_name": "WhoIsHot Inc", "tng_number": "+60 12-345 6789"}'
