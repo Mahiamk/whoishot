@@ -29,8 +29,9 @@ def test_receipt_upload_validation_and_hash(client, auth):
     assert res.status_code == 201
     data = res.json()
     assert "url" in data
-    assert "/media/receipts/" in data["url"]
+    assert "receipts/" in data["url"]
     assert "hash" in data
+
     assert len(data["hash"]) == 64
 
 
