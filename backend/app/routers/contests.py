@@ -10,12 +10,13 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.audit import audit
-from app.constants import CRITERIA
+from app.constants import CRITERIA, SEED_DEFAULT_CRITERIA
 from app.contest_expiry import check_contest_expiry
 from app.db import get_db
 from app.deps import get_current_user
 from app.models import (
     Contest,
+    ContestCriterion,
     Contestant,
     ContestantStatus,
     ContestStatus,
@@ -24,6 +25,7 @@ from app.models import (
     Gender,
     Rating,
     User,
+    UserRole,
     as_aware,
     utcnow,
 )
@@ -31,6 +33,8 @@ from app.routers.media import blurred_thumb_url
 from app.security import hash_password
 from app.schemas import (
     ContestCreate,
+    ContestCriterionCreate,
+    ContestCriterionRead,
     ContestRead,
     ContestWithCounts,
     ExtendRequest,
@@ -57,6 +61,11 @@ _leaderboard_cache: dict[tuple[int, str], tuple[float, list[dict[str, Any]]]] = 
 ALL_GENDERS_KEY = "ALL"
 
 
+def slugify_key(text: str) -> str:
+    s = re.sub(r"[^a-zA-Z0-9]+", "_", text.strip()).strip("_").lower()
+    return s if s else "criterion"
+
+
 def _bracket_stats(
     db: Session, contest_id: int, gender: Gender | None
 ) -> list[dict[str, Any]]:
@@ -72,14 +81,16 @@ def _bracket_stats(
     per_criterion = (
         db.query(
             Rating.contestant_id.label("cid"),
-            Rating.criterion.label("criterion"),
+            ContestCriterion.key.label("criterion"),
             func.avg(Rating.score).label("crit_avg"),
         )
+        .join(ContestCriterion, Rating.criterion_id == ContestCriterion.id)
         .join(User, Rating.voter_id == User.id)
         .filter(User.is_banned == False)  # noqa: E712
-        .group_by(Rating.contestant_id, Rating.criterion)
+        .group_by(Rating.contestant_id, ContestCriterion.key)
         .subquery()
     )
+
     voter_counts = (
         db.query(
             Rating.contestant_id.label("cid"),
@@ -209,7 +220,7 @@ def contestant_averages(db: Session, contest_id: int) -> dict[int, float]:
             Contestant.status == ContestantStatus.active,
             User.is_banned == False,  # noqa: E712
         )
-        .group_by(Rating.contestant_id, Rating.criterion)
+        .group_by(Rating.contestant_id, Rating.criterion_id)
         .all()
     )
     voter_counts = dict(
@@ -275,11 +286,122 @@ def create_contest(
         entry_fee_cents=payload.entry_fee_cents,
     )
     db.add(contest)
+    db.flush()
+
+    if payload.criteria:
+        seen_keys: set[str] = set()
+        for idx, item in enumerate(payload.criteria):
+            key = item.key or slugify_key(item.label)
+            base_key = key
+            counter = 1
+            while key in seen_keys:
+                key = f"{base_key}_{counter}"
+                counter += 1
+            seen_keys.add(key)
+            db.add(
+                ContestCriterion(
+                    contest_id=contest.id,
+                    key=key,
+                    label=item.label.strip(),
+                    emoji=item.emoji.strip() if item.emoji else None,
+                    sort_order=item.sort_order if item.sort_order is not None else idx,
+                )
+            )
+    else:
+        for item in SEED_DEFAULT_CRITERIA:
+            db.add(
+                ContestCriterion(
+                    contest_id=contest.id,
+                    key=item["key"],
+                    label=item["label"],
+                    emoji=item["emoji"],
+                    sort_order=item["sort_order"],
+                )
+            )
+
     db.commit()
-    db.refresh(contest)
+    contest = db.query(Contest).filter(Contest.id == contest.id).first()
     contest_dict = ContestRead.model_validate(contest).model_dump()
     contest_dict["prize_pool_cents"] = 0
     return ContestRead(**contest_dict)
+
+
+@router.patch("/{id_or_code}/criteria", response_model=list[ContestCriterionRead])
+def update_contest_criteria(
+    id_or_code: str,
+    payload: list[ContestCriterionCreate],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[ContestCriterionRead]:
+    if id_or_code.isdigit():
+        contest = db.get(Contest, int(id_or_code))
+    else:
+        contest = db.query(Contest).filter(Contest.join_code == id_or_code).first()
+
+    if contest is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Contest not found"
+        )
+
+    if contest.creator_id != current_user.id and current_user.role != UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only the contest creator can edit criteria"
+        )
+
+    # Locking rule: once a contest has at least one rating submitted, criteria are frozen.
+    has_ratings = (
+        db.query(Rating.id)
+        .join(Contestant, Rating.contestant_id == Contestant.id)
+        .filter(Contestant.contest_id == contest.id)
+        .first()
+        is not None
+    )
+    if has_ratings:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Criteria are locked once voting starts",
+        )
+
+    if not (3 <= len(payload) <= 15):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Contest criteria count must be between 3 and 15",
+        )
+
+    for item in payload:
+        if len(item.label.strip()) == 0 or len(item.label) > 30:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Criteria label must be between 1 and 30 characters",
+            )
+
+    db.query(ContestCriterion).filter(ContestCriterion.contest_id == contest.id).delete(synchronize_session=False)
+
+    seen_keys: set[str] = set()
+    new_criteria: list[ContestCriterion] = []
+    for idx, item in enumerate(payload):
+        key = item.key or slugify_key(item.label)
+        base_key = key
+        counter = 1
+        while key in seen_keys:
+            key = f"{base_key}_{counter}"
+            counter += 1
+        seen_keys.add(key)
+
+        crit = ContestCriterion(
+            contest_id=contest.id,
+            key=key,
+            label=item.label.strip(),
+            emoji=item.emoji.strip() if item.emoji else None,
+            sort_order=item.sort_order if item.sort_order is not None else idx,
+        )
+        new_criteria.append(crit)
+        db.add(crit)
+
+    db.commit()
+    invalidate_leaderboard_cache(contest.id)
+    return new_criteria
+
 
 
 # NOTE: must be registered before GET /{join_code}, or "popular" would be
@@ -418,12 +540,13 @@ def get_leaderboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> LeaderboardRead:
-    if criterion != "overall" and criterion not in CRITERIA:
+    contest = get_contest_or_404(db, join_code)
+    valid_keys = [c.key for c in contest.criteria]
+    if criterion != "overall" and criterion not in valid_keys:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"criterion must be 'overall' or one of: {', '.join(CRITERIA)}",
+            detail="criterion must be 'overall' or one of the contest criteria",
         )
-    contest = get_contest_or_404(db, join_code)
     stats = _bracket_stats(db, contest.id, gender)
 
     def score_of(entry: dict) -> float | None:
