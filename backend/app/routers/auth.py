@@ -83,7 +83,7 @@ def request_domain(
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
+def register(payload: UserCreate, db: Session = Depends(get_db)) -> UserRead:
     email = payload.email.lower()
 
     allowed, reason = check_email_domain(db, email)
@@ -116,8 +116,9 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
         user_id=user.id,
         is_transactional_required=True,
     )
+    db.commit()
 
-    return user
+    return UserRead.model_validate(user)
 
 
 @router.post("/login", response_model=TokenResponse)
