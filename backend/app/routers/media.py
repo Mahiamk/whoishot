@@ -8,10 +8,10 @@ from PIL import Image, ImageFilter
 
 from app.deps import get_current_user
 from app.models import User
+from app.services.storage_service import MEDIA_DIR, fetch_file_bytes, upload_file
 
 router = APIRouter(prefix="/media", tags=["media"])
 
-MEDIA_DIR = Path(__file__).resolve().parent.parent.parent / "media"
 ALLOWED_TYPES = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
@@ -28,26 +28,13 @@ def _blur_thumb_path(contestant_id: int) -> Path:
 
 
 def _fetch_photo_bytes(photo_url: str) -> bytes | None:
-    """Read bytes for a photo_url: local files are read straight off disk
-    (avoids a self-HTTP round trip), anything else (e.g. seeded external
-    URLs) is fetched over HTTP. Returns None on any failure."""
-    if "/media/" in photo_url:
-        filename = photo_url.rsplit("/", 1)[-1]
-        local = MEDIA_DIR / filename
-        return local.read_bytes() if local.is_file() else None
-    try:
-        resp = httpx.get(photo_url, timeout=5.0, follow_redirects=True)
-        resp.raise_for_status()
-        return resp.content
-    except (httpx.HTTPError, httpx.InvalidURL):
-        return None
+    """Read bytes for a photo_url using storage service (local disk or R2/HTTP)."""
+    return fetch_file_bytes(photo_url)
 
 
 def generate_blurred_thumb(contestant_id: int, photo_url: str | None) -> None:
     """Generate a small blurred JPEG thumbnail for a contestant's photo,
-    saved alongside the original as {contestant_id}_blur.jpg. Used by the
-    public showcase so real contestants' actual photos are never exposed
-    to unauthenticated visitors. Best-effort: never raises."""
+    uploaded via storage client. Best-effort: never raises."""
     if not photo_url:
         return
     data = _fetch_photo_bytes(photo_url)
@@ -57,8 +44,9 @@ def generate_blurred_thumb(contestant_id: int, photo_url: str | None) -> None:
         image = Image.open(io.BytesIO(data)).convert("RGB")
         image.thumbnail(BLUR_THUMB_SIZE)
         image = image.filter(ImageFilter.GaussianBlur(radius=BLUR_RADIUS))
-        MEDIA_DIR.mkdir(exist_ok=True)
-        image.save(_blur_thumb_path(contestant_id), "JPEG", quality=70)
+        buf = io.BytesIO()
+        image.save(buf, "JPEG", quality=70)
+        upload_file(buf.getvalue(), f"{contestant_id}_blur.jpg", "image/jpeg")
     except Exception:
         return
 
@@ -88,6 +76,8 @@ async def upload_photo(
         )
 
     filename = uuid4().hex + ALLOWED_TYPES[file.content_type]
-    MEDIA_DIR.mkdir(exist_ok=True)
-    (MEDIA_DIR / filename).write_bytes(data)
-    return {"url": f"{request.base_url}media/{filename}"}
+    saved_url = upload_file(data, filename, file.content_type)
+    if saved_url.startswith("/"):
+        saved_url = f"{str(request.base_url).rstrip('/')}{saved_url}"
+    return {"url": saved_url}
+
