@@ -12,14 +12,6 @@ from app.routers import admin, auth, contestants, contests, entries, geo, media,
 from app.routers.media import MEDIA_DIR
 
 
-@api_router.get("/")
-async def root():
-    return {
-        "status": "ok",
-        "service": "WhoIsHot API"
-    }
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import logging
@@ -64,8 +56,15 @@ async def lifespan(app: FastAPI):
     stop_scheduler()
 
 
-
 api_router = APIRouter(prefix="/api/v1")
+
+
+@api_router.get("/")
+async def api_root():
+    return {
+        "status": "ok",
+        "service": "WhoIsHot API v1"
+    }
 
 
 @api_router.get("/health")
@@ -89,11 +88,9 @@ api_router.include_router(webhooks.router)
 api_router.include_router(geo.router)
 
 
-
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="WhoIsHot API", version="0.1.0", lifespan=lifespan)
-
 
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -106,6 +103,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.get("/")
+    async def root():
+        return {
+            "status": "ok",
+            "service": "WhoIsHot API",
+            "docs": "/docs"
+        }
+
     app.include_router(api_router)
 
     MEDIA_DIR.mkdir(exist_ok=True)
@@ -115,3 +120,4 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
