@@ -15,14 +15,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from passlib.context import CryptContext
 
-from app.constants import CRITERIA
+from app.constants import CRITERIA, SEED_DEFAULT_CRITERIA
 from app.db import SessionLocal
-from app.models import Contest, Contestant, Gender, Rating, SocialLink, User, utcnow
+from app.models import Contest, ContestCriterion, Contestant, Gender, Rating, SocialLink, User, utcnow
 
 JOIN_CODE = "SUNWAY-CS24"
 PASSWORD = "password123"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 CONTESTANTS = [
     # (name, gender, age, country, hobbies, fav_things, relationship_status, socials)
@@ -100,6 +101,19 @@ def main() -> None:
         db.add(contest)
         db.flush()
 
+        criteria_objs: list[ContestCriterion] = []
+        for item in SEED_DEFAULT_CRITERIA:
+            crit = ContestCriterion(
+                contest_id=contest.id,
+                key=item["key"],
+                label=item["label"],
+                emoji=item["emoji"],
+                sort_order=item["sort_order"],
+            )
+            db.add(crit)
+            criteria_objs.append(crit)
+        db.flush()
+
         contestants: list[Contestant] = []
         for i, (name, gender, age, country, hobbies, favs, rel, socials) in enumerate(
             CONTESTANTS
@@ -160,20 +174,21 @@ def main() -> None:
 
         # ~200 ratings out of the 400 possible (voter, contestant, criterion) combos
         combos = [
-            (v.id, c.id, crit)
+            (v.id, c.id, crit.id)
             for v in voters
             for c in contestants
-            for crit in CRITERIA
+            for crit in criteria_objs
         ]
-        for voter_id, contestant_id, criterion in random.sample(combos, 200):
+        for voter_id, contestant_id, criterion_id in random.sample(combos, 200):
             db.add(
                 Rating(
                     voter_id=voter_id,
                     contestant_id=contestant_id,
-                    criterion=criterion,
+                    criterion_id=criterion_id,
                     score=random.randint(1, 10),
                 )
             )
+
 
         db.commit()
         print(
