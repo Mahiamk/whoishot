@@ -293,6 +293,30 @@ def get_adapter_for_provider(provider_name: str) -> PaymentProviderAdapter:
     return MockAdapter()
 
 
+COUNTRY_CURRENCIES: dict[str, str] = {
+    # Eurozone
+    "FR": "EUR", "DE": "EUR", "ES": "EUR", "IT": "EUR", "NL": "EUR", "BE": "EUR",
+    "AT": "EUR", "IE": "EUR", "FI": "EUR", "PT": "EUR", "GR": "EUR", "CY": "EUR",
+    "EE": "EUR", "LV": "EUR", "LT": "EUR", "MT": "EUR", "SK": "EUR", "SI": "EUR",
+    "HR": "EUR", "LU": "EUR", "MC": "EUR", "AD": "EUR", "SM": "EUR", "VA": "EUR",
+    "ME": "EUR", "XK": "EUR",
+    # Americas
+    "US": "USD", "CA": "CAD", "MX": "MXN", "BR": "BRL", "AR": "ARS", "CL": "CLP",
+    "CO": "COP", "PE": "PEN", "PR": "USD", "EC": "USD", "SV": "USD", "PA": "USD",
+    # Europe (Non-Euro)
+    "GB": "GBP", "CH": "CHF", "SE": "SEK", "NO": "NOK", "DK": "DKK", "PL": "PLN",
+    "CZ": "CZK", "HU": "HUF", "RO": "RON", "BG": "BGN", "UA": "UAH", "TR": "TRY",
+    # Asia & Pacific
+    "MY": "MYR", "SG": "SGD", "JP": "JPY", "CN": "CNY", "HK": "HKD", "TW": "TWD",
+    "KR": "KRW", "IN": "INR", "ID": "IDR", "PH": "PHP", "TH": "THB", "VN": "VND",
+    "AU": "AUD", "NZ": "NZD", "PK": "PKR", "BD": "BDT", "LK": "LKR", "NP": "NPR",
+    # Middle East & Africa
+    "ET": "ETB", "AE": "AED", "SA": "SAR", "QA": "QAR", "KW": "KWD", "OM": "OMR",
+    "BH": "BHD", "JO": "JOD", "EG": "EGP", "ZA": "ZAR", "NG": "NGN", "KE": "KES",
+    "GH": "GHS", "TZ": "TZS", "UG": "UGX", "MA": "MAD", "DZ": "DZD", "TN": "TND",
+}
+
+
 def resolve_provider_for_country(
     country_code: str | None,
 ) -> tuple[PaymentProviderAdapter, str, str]:
@@ -301,7 +325,8 @@ def resolve_provider_for_country(
     Rules:
     - MY (Malaysia) -> CurlecAdapter(), 'tng', 'MYR'
     - ET (Ethiopia) -> BirrAdapter(), 'birr', 'ETB'
-    - fallback -> MockAdapter(), 'mock', 'MYR' (or default dev behavior)
+    - Country in COUNTRY_CURRENCIES (e.g. FR -> EUR, US -> USD, GB -> GBP) -> MockAdapter(), 'mock', currency
+    - Default fallback -> MockAdapter(), 'mock', 'USD'
     """
     settings = get_settings()
     code = (country_code or "").upper().strip()
@@ -311,6 +336,6 @@ def resolve_provider_for_country(
     if code == "ET":
         return BirrAdapter(), "birr", "ETB"
 
-    # Default fallback to mock in dev or when MOCK_PAYMENT is enabled
-    return MockAdapter(), "mock", settings.SUBSCRIPTION_CURRENCY
+    currency = COUNTRY_CURRENCIES.get(code, "USD")
+    return MockAdapter(), "mock", currency
 
