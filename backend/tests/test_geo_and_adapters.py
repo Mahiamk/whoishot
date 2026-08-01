@@ -27,9 +27,20 @@ def test_resolve_provider_for_country():
     assert provider_et == "birr"
     assert currency_et == "ETB"
 
-    adapter_def, provider_def, _ = resolve_provider_for_country("US")
-    assert isinstance(adapter_def, MockAdapter)
-    assert provider_def == "mock"
+    # France -> EUR
+    _, provider_fr, currency_fr = resolve_provider_for_country("FR")
+    assert provider_fr == "mock"
+    assert currency_fr == "EUR"
+
+    # US -> USD
+    _, provider_us, currency_us = resolve_provider_for_country("US")
+    assert provider_us == "mock"
+    assert currency_us == "USD"
+
+    # UK -> GBP
+    _, provider_gb, currency_gb = resolve_provider_for_country("GB")
+    assert provider_gb == "mock"
+    assert currency_gb == "GBP"
 
 
 def test_mock_adapter_checkout_and_webhook():
