@@ -294,9 +294,19 @@ function AccountTab() {
                         className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                       >
                         <option value="">Auto-detect from IP</option>
+                        <option value="FR">France (EUR)</option>
+                        <option value="DE">Germany (EUR)</option>
+                        <option value="ES">Spain (EUR)</option>
+                        <option value="IT">Italy (EUR)</option>
+                        <option value="NL">Netherlands (EUR)</option>
+                        <option value="GB">United Kingdom (GBP)</option>
+                        <option value="US">United States (USD)</option>
+                        <option value="CA">Canada (CAD)</option>
+                        <option value="AU">Australia (AUD)</option>
+                        <option value="SG">Singapore (SGD)</option>
                         <option value="MY">Malaysia (MYR / Touch 'n Go)</option>
                         <option value="ET">Ethiopia (ETB / Chapa)</option>
-                        <option value="US">Other / Unsupported Region</option>
+                        <option value="OTHER">Other Region</option>
                       </select>
                     </FormControl>
                     <FormDescription className="text-xs text-muted-foreground">
