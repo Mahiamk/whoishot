@@ -23,6 +23,10 @@ import { Input } from '@/components/ui/input'
 import { GoogleSignInButton } from '@/components/GoogleSignInButton'
 import { useAuth } from '@/context/AuthContext'
 
+import { useState } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { api } from '@/lib/api'
+
 const loginSchema = z.object({
   email: z.email('Enter a valid email'),
   password: z.string().min(1, 'Password is required'),
@@ -33,6 +37,8 @@ type LoginValues = z.infer<typeof loginSchema>
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -40,6 +46,7 @@ export default function Login() {
   })
 
   async function onSubmit(values: LoginValues) {
+    setUnverifiedEmail(null)
     try {
       await login(values.email, values.password)
       toast.success('Welcome back!')
@@ -47,7 +54,27 @@ export default function Login() {
       // there; never bounce a fresh sign-in into a contest.
       navigate('/')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Login failed')
+      const msg = err instanceof Error ? err.message : 'Login failed'
+      if (msg.toLowerCase().includes('verify') || msg.toLowerCase().includes('activation')) {
+        setUnverifiedEmail(values.email)
+      }
+      toast.error(msg)
+    }
+  }
+
+  async function handleResend() {
+    if (!unverifiedEmail) return
+    setResending(true)
+    try {
+      await api('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ email: unverifiedEmail }),
+      })
+      toast.success('Activation link sent! Please check your inbox.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not resend email')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -59,6 +86,23 @@ export default function Login() {
           <CardDescription className="text-sm">Sign in to your WhoIsHot account</CardDescription>
         </CardHeader>
         <CardContent className="p-6 sm:p-8 pt-0">
+          {unverifiedEmail && (
+            <Alert className="mb-4 border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl space-y-2">
+              <AlertDescription className="text-xs leading-relaxed">
+                Your account is not activated yet. Check your inbox for the link sent to <strong>{unverifiedEmail}</strong>.
+              </AlertDescription>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full text-xs h-8 rounded-lg border-amber-500/30 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20"
+                onClick={handleResend}
+                disabled={resending}
+              >
+                {resending ? 'Sending…' : 'Resend activation email'}
+              </Button>
+            </Alert>
+          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
