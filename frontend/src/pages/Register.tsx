@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { CheckCircle2, Loader2, Mail, XCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -105,8 +105,9 @@ function NotRecognizedDialog({
 
 export default function Register() {
   const { register } = useAuth()
-  const navigate = useNavigate()
   const [requestDialogOpen, setRequestDialogOpen] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
@@ -115,7 +116,7 @@ export default function Register() {
 
   const email = form.watch('email')
   const debouncedEmail = useDebouncedValue(email, 500)
-  const emailLooksValid = z.email().safeParse(debouncedEmail).success
+  const emailLooksValid = z.string().email().safeParse(debouncedEmail).success
 
   const {
     data: emailCheck,
@@ -129,19 +130,67 @@ export default function Register() {
     staleTime: 30_000,
   })
 
-  // Only trust emailCheck once it was computed for the email currently
-  // debounced/displayed — avoids flashing a stale verdict while retyping.
   const checkIsCurrent = emailLooksValid && !checkingEmail && emailCheck !== undefined
   const allowed = checkIsCurrent ? emailCheck.allowed : false
 
   async function onSubmit(values: RegisterValues) {
     try {
       await register(values)
-      toast.success('Account created — welcome!')
-      navigate('/')
+      toast.success('Account created! Please check your email to activate.')
+      setRegisteredEmail(values.email)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Registration failed')
     }
+  }
+
+  async function handleResend() {
+    if (!registeredEmail) return
+    setResending(true)
+    try {
+      await api('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ email: registeredEmail }),
+      })
+      toast.success('Activation link sent! Please check your inbox.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not resend email')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  if (registeredEmail) {
+    return (
+      <main className="flex min-h-[calc(100vh-80px)] items-center justify-center p-4 py-8 sm:py-12">
+        <Card className="w-full max-w-md rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+          <CardHeader className="space-y-2 p-6 sm:p-8 text-center pb-2">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-2">
+              <Mail className="size-7" />
+            </div>
+            <CardTitle className="text-2xl font-bold tracking-tight">Check your email!</CardTitle>
+            <CardDescription className="text-sm leading-relaxed">
+              We sent an activation link to <strong className="text-foreground">{registeredEmail}</strong>. Click the link in your email to activate your account before logging in.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 sm:p-8 pt-4 space-y-3">
+            <Button
+              variant="outline"
+              className="w-full h-11 rounded-xl font-medium"
+              onClick={handleResend}
+              disabled={resending}
+            >
+              {resending ? 'Sending…' : 'Resend activation link'}
+            </Button>
+            <Button
+              asChild
+              className="w-full h-11 rounded-xl bg-gradient-to-r from-violet-600 via-pink-600 to-cyan-600 font-semibold text-white"
+            >
+              <Link to="/login">Go to Login</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </main>
+    )
   }
 
   return (
