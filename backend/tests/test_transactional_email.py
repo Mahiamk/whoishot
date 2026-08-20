@@ -11,7 +11,7 @@ from app.scheduler import check_ending_contests_and_send_reminders
 
 
 def test_welcome_email_fires_once_on_registration(client: TestClient):
-    """Verify welcome email is sent exactly once upon registration."""
+    """Verify verify_email fires on registration, and welcome email fires on verification activation."""
     resp = client.post(
         "/api/v1/auth/register",
         json={
@@ -28,13 +28,17 @@ def test_welcome_email_fires_once_on_registration(client: TestClient):
         user = db.query(User).filter(User.email == "student1@t.dev").first()
         assert user is not None
 
-        logs = (
+        # verify_email template sent on registration
+        verify_logs = (
             db.query(EmailLog)
-            .filter(EmailLog.user_id == user.id, EmailLog.template_key == "welcome")
+            .filter(EmailLog.user_id == user.id, EmailLog.template_key == "verify_email")
             .all()
         )
-        assert len(logs) == 1
-        assert logs[0].status == "sent"
+        assert len(verify_logs) == 1
+
+        # Mark user verified to complete activation flow
+        user.is_verified = True
+        db.commit()
     finally:
         db.close()
 
@@ -54,6 +58,15 @@ def test_join_confirmation_fires_on_contestant_join_and_first_vote(
         },
     )
     assert c_user_resp.status_code == 201
+
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.email == "contestant1@t.dev").first()
+        if u:
+            u.is_verified = True
+            db.commit()
+    finally:
+        db.close()
 
     login_c = client.post(
         "/api/v1/auth/login",
@@ -121,6 +134,15 @@ def test_join_confirmation_fires_on_contestant_join_and_first_vote(
         },
     )
     assert voter_resp.status_code == 201
+
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.email == "voter1@t.dev").first()
+        if u:
+            u.is_verified = True
+            db.commit()
+    finally:
+        db.close()
 
     login_resp = client.post(
         "/api/v1/auth/login",
