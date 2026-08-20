@@ -5,6 +5,7 @@ import {
   DollarSign,
   Flag,
   Handshake,
+  LogOut,
   ScrollText,
   Trophy,
   Users as UsersIcon,
@@ -13,6 +14,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -24,6 +26,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/context/AuthContext'
@@ -40,9 +43,6 @@ const NAV = [
   { to: '/admin/email-domains', label: 'Email domains', icon: AtSign, end: false },
   { to: '/admin/audit-log', label: 'Audit Log', icon: ScrollText, end: false },
 ]
-
-
-
 
 export default function AdminLayout() {
   const { user, loading } = useAuth()
@@ -108,6 +108,18 @@ export default function AdminLayout() {
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
+          <SidebarFooter className="p-3 border-t border-border/40">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Exit to Main Site" className="h-11 min-h-[44px] text-sm font-medium text-muted-foreground hover:text-foreground">
+                  <Link to="/">
+                    <LogOut className="size-4" />
+                    <span>Exit Admin</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
         </Sidebar>
         <SidebarInset>
           <header className="flex items-center justify-between gap-2 border-b border-border/60 bg-background/95 backdrop-blur-sm px-4 py-3 sticky top-0 z-10">
@@ -118,9 +130,17 @@ export default function AdminLayout() {
                 WhoIsHot Admin
               </span>
             </div>
-            <span className="text-xs sm:text-sm text-muted-foreground font-medium truncate max-w-48 sm:max-w-none">
-              {user.display_name}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs sm:text-sm text-muted-foreground font-medium truncate max-w-48 sm:max-w-none">
+                {user.display_name}
+              </span>
+              <Button asChild variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-semibold text-xs border-primary/30 hover:bg-primary/10 hover:text-primary transition-colors">
+                <Link to="/">
+                  <LogOut className="size-3.5" />
+                  <span>Exit Admin</span>
+                </Link>
+              </Button>
+            </div>
           </header>
           <div className="flex-1 overflow-auto p-4 sm:p-6">
             <Outlet />
@@ -129,5 +149,4 @@ export default function AdminLayout() {
       </SidebarProvider>
     </TooltipProvider>
   )
-
 }
