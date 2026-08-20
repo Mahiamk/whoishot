@@ -40,6 +40,7 @@ interface AuthContextValue {
     display_name: string
     gender: 'F' | 'M'
   }) => Promise<void>
+  completeVerification: (accessToken: string) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
 }
@@ -108,9 +109,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         body: JSON.stringify(data),
       })
-      await login(data.email, data.password)
     },
-    [login],
+    [],
+  )
+
+  const completeVerification = useCallback(
+    async (accessToken: string) => {
+      setToken(accessToken)
+      queryClient.clear()
+      setUser(await api<User>('/auth/me'))
+    },
+    [queryClient],
   )
 
   const logout = useCallback(() => {
@@ -126,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, loginWithGoogle, register, logout, refreshUser }}
+      value={{ user, loading, login, loginWithGoogle, register, completeVerification, logout, refreshUser }}
     >
       {children}
     </AuthContext.Provider>
