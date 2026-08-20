@@ -56,6 +56,14 @@ def auth():
             },
         )
         assert r.status_code == 201, r.text
+        db = SessionLocal()
+        try:
+            u = db.query(app.models.User).filter(app.models.User.email == email.lower()).first()
+            if u:
+                u.is_verified = True
+                db.commit()
+        finally:
+            db.close()
         r = client.post(
             f"{API}/auth/login", json={"email": email, "password": PASSWORD}
         )
