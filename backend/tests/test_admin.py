@@ -166,6 +166,16 @@ def test_no_public_path_grants_admin(client, auth):
         },
     )
     assert r.status_code == 201
+    from app.db import SessionLocal
+    from app.models import User
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.email == "sneaky@t.dev").first()
+        if u:
+            u.is_verified = True
+            db.commit()
+    finally:
+        db.close()
     login = client.post(
         f"{API}/auth/login", json={"email": "sneaky@t.dev", "password": PASSWORD}
     )
