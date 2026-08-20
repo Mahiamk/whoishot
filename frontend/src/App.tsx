@@ -4,6 +4,7 @@ import Landing from '@/pages/Landing'
 import Login from '@/pages/Login'
 import Register from '@/pages/Register'
 import Verify from '@/pages/Verify'
+import VerifyEmail from '@/pages/VerifyEmail'
 import Contest from '@/pages/Contest'
 import Board from '@/pages/Board'
 import ContestantProfile from '@/pages/ContestantProfile'
@@ -36,6 +37,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify" element={<Verify />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/contest/:joinCode" element={<Contest />} />
 
         <Route path="/contest/:joinCode/board" element={<Board />} />
