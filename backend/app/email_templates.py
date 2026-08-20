@@ -47,7 +47,27 @@ def _wrap_body(content_html: str, frontend_url: str) -> str:
 def render_email(template_key: str, context: dict[str, Any], frontend_url: str = "http://localhost:5173") -> tuple[str, str]:
     """Returns tuple of (subject, html_body)."""
 
-    if template_key == "welcome":
+    if template_key == "verify_email":
+        name = context.get("display_name", "Student")
+        verification_url = context.get("verification_url", f"{frontend_url}/verify-email")
+        subject = f"Activate your WhoIsHot account, {name}!"
+        content = f"""
+        <h2 style="color: #ffffff; margin-top: 0; font-size: 20px; font-weight: 700;">Activate Your Account ✉️</h2>
+        <p>Hi <strong>{name}</strong>,</p>
+        <p>Thank you for signing up for WhoIsHot! Please verify your email address to activate your account and log in.</p>
+        
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="{verification_url}" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 9999px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);">
+            Activate My Account &rarr;
+          </a>
+        </div>
+
+        <p style="font-size: 13px; color: #94a3b8;">Or copy and paste this link into your browser:<br>
+        <a href="{verification_url}" style="color: #38bdf8; word-break: break-all;">{verification_url}</a></p>
+        <p style="font-size: 12px; color: #64748b; margin-top: 20px;">If you didn't create an account, you can safely ignore this email.</p>
+        """
+
+    elif template_key == "welcome":
         name = context.get("display_name", "Student")
         subject = f"Welcome to WhoIsHot, {name}!"
         content = f"""
