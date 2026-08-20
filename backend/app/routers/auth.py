@@ -20,11 +20,19 @@ from app.schemas import (
     GoogleLoginRequest,
     GoogleLoginResponse,
     LoginRequest,
+    ResendVerificationRequest,
     TokenResponse,
     UserCreate,
     UserRead,
+    VerifyEmailRequest,
 )
-from app.security import create_access_token, hash_password, verify_password
+from app.security import (
+    create_access_token,
+    create_email_verification_token,
+    decode_email_verification_token,
+    hash_password,
+    verify_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -103,16 +111,24 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> UserRead:
         password_hash=hash_password(payload.password),
         display_name=payload.display_name,
         gender=payload.gender,
+        is_verified=False,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
+    settings = get_settings()
+    token = create_email_verification_token(user.id)
+    verification_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={token}"
+
     send_email(
         db,
         to=user.email,
-        template_key="welcome",
-        context={"display_name": user.display_name},
+        template_key="verify_email",
+        context={
+            "display_name": user.display_name,
+            "verification_url": verification_url,
+        },
         user_id=user.id,
         is_transactional_required=True,
     )
@@ -134,7 +150,75 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This account has been banned. Contact the contest organizer.",
         )
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email address before logging in. Check your inbox for the activation link.",
+        )
     return TokenResponse(access_token=create_access_token(user.id))
+
+
+@router.post("/verify-email", response_model=TokenResponse)
+def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    user_id = decode_email_verification_token(payload.token)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification link.",
+        )
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    if not user.is_verified:
+        user.is_verified = True
+        db.commit()
+        db.refresh(user)
+
+        send_email(
+            db,
+            to=user.email,
+            template_key="welcome",
+            context={"display_name": user.display_name},
+            user_id=user.id,
+            is_transactional_required=True,
+        )
+        db.commit()
+
+    return TokenResponse(access_token=create_access_token(user.id))
+
+
+@router.post("/resend-verification")
+def resend_verification(
+    payload: ResendVerificationRequest, db: Session = Depends(get_db)
+) -> dict[str, str]:
+    email = payload.email.lower()
+    user = db.query(User).filter(User.email == email).first()
+
+    if user and not user.is_verified:
+        settings = get_settings()
+        token = create_email_verification_token(user.id)
+        verification_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={token}"
+
+        send_email(
+            db,
+            to=user.email,
+            template_key="verify_email",
+            context={
+                "display_name": user.display_name,
+                "verification_url": verification_url,
+            },
+            user_id=user.id,
+            is_transactional_required=True,
+        )
+        db.commit()
+
+    return {
+        "message": "If an unverified account exists with that email, a new activation link has been sent."
+    }
 
 
 @router.post("/google", response_model=GoogleLoginResponse)
