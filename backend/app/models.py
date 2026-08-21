@@ -206,6 +206,18 @@ class Contest(Base):
     is_showcase_public: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    is_hidden: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+    is_paused: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     ends_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=default_contest_end
     )
