@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.audit import audit
@@ -9,6 +10,7 @@ from app.info_requests import check_expire
 
 from app.models import (
     Contestant,
+    ContestantStatus,
     EntryPayment,
     InfoRequest,
     InfoRequestStatus,
@@ -16,12 +18,13 @@ from app.models import (
     PartnerInquiry,
     PartnerIntroduction,
     PaymentMethod,
+    Rating,
     Report,
     Subscription,
     User,
     utcnow,
 )
-from app.routers.contests import rank_in_bracket
+from app.routers.contests import _bracket_stats, rank_in_bracket
 from app.schemas import (
     InfoRequestRespond,
     IntroductionRespond,
@@ -94,6 +97,60 @@ def get_my_contestants(
             if contestant.status.value == "active"
             else (None, None, {}, 0)
         )
+
+        # Participation counts
+        total_contestants = (
+            db.query(func.count(Contestant.id))
+            .filter(
+                Contestant.contest_id == contest.id,
+                Contestant.status == ContestantStatus.active,
+            )
+            .scalar()
+            or 0
+        )
+        total_voters = (
+            db.query(func.count(func.distinct(Rating.voter_id)))
+            .join(Contestant, Rating.contestant_id == Contestant.id)
+            .filter(Contestant.contest_id == contest.id)
+            .scalar()
+            or 0
+        )
+        total_ratings = (
+            db.query(func.count(Rating.id))
+            .join(Contestant, Rating.contestant_id == Contestant.id)
+            .filter(Contestant.contest_id == contest.id)
+            .scalar()
+            or 0
+        )
+
+        # Bracket scores distribution & normal curve parameters
+        b_stats = _bracket_stats(db, contestant.contest_id, contestant.gender_category)
+        bracket_contestants = len(b_stats)
+        bracket_scores: list[float] = []
+        for s in b_stats:
+            c_avgs = s.get("criterion_averages", {})
+            if c_avgs:
+                s_val = round(sum(c_avgs.values()) / len(c_avgs), 2)
+                bracket_scores.append(s_val)
+
+        if bracket_scores:
+            mean_score = round(sum(bracket_scores) / len(bracket_scores), 2)
+            if len(bracket_scores) > 1:
+                variance = sum((x - mean_score) ** 2 for x in bracket_scores) / (
+                    len(bracket_scores) - 1
+                )
+                std_dev = round(max(0.2, variance ** 0.5), 2)
+            else:
+                std_dev = 1.0
+        else:
+            mean_score = 5.0
+            std_dev = 1.0
+
+        percentile: float | None = None
+        if avg_score is not None and bracket_scores:
+            count_below = sum(1 for s in bracket_scores if s < avg_score)
+            percentile = round((count_below / len(bracket_scores)) * 100, 1)
+
         results.append(
             MyContestantEntry(
                 contestant_id=contestant.id,
@@ -110,11 +167,24 @@ def get_my_contestants(
                 fav_things=contestant.fav_things,
                 relationship_status=contestant.relationship_status,
                 socials_visible=contestant.socials_visible,
+                open_to_opportunities=contestant.open_to_opportunities,
                 status=contestant.status,
                 criterion_averages=criterion_averages,
                 vote_count=vote_count,
                 avg_score=avg_score,
                 rank=rank,
+                total_contestants=total_contestants,
+                total_voters=total_voters,
+                total_ratings=total_ratings,
+                bracket_contestants=bracket_contestants,
+                bracket_scores=bracket_scores,
+                mean_score=mean_score,
+                std_dev=std_dev,
+                percentile=percentile,
+                ends_at=contest.ends_at,
+                is_paused=contest.is_paused,
+                is_deleted=contest.is_deleted,
+                is_hidden=contest.is_hidden,
             )
         )
     return results
