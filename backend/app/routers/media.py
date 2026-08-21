@@ -6,9 +6,11 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from PIL import Image, ImageFilter
 
+from fastapi.responses import FileResponse, Response
+from app.config import get_settings
 from app.deps import get_current_user
 from app.models import User
-from app.services.storage_service import MEDIA_DIR, fetch_file_bytes, upload_file
+from app.services.storage_service import MEDIA_DIR, fetch_file_bytes, get_r2_client, upload_file
 
 router = APIRouter(prefix="/media", tags=["media"])
 
@@ -57,6 +59,50 @@ def blurred_thumb_url(request: Request, contestant_id: int) -> str | None:
     return f"{request.base_url}media/{contestant_id}_blur.jpg"
 
 
+@router.api_route("/{filename:path}", methods=["GET", "HEAD"])
+def get_media_file(filename: str):
+    clean_key = filename.lstrip("/")
+
+    # 1. Local disk check
+    local_path = MEDIA_DIR / clean_key
+    if local_path.is_file():
+        ext = local_path.suffix.lower()
+        content_type = "image/jpeg"
+        if ext == ".png":
+            content_type = "image/png"
+        elif ext == ".webp":
+            content_type = "image/webp"
+        return FileResponse(
+            local_path,
+            media_type=content_type,
+            headers={"Cache-Control": "public, max-age=31536000"},
+        )
+
+    # 2. Cloudflare R2 check
+    client = get_r2_client()
+    settings = get_settings()
+    if client and settings.R2_BUCKET:
+        try:
+            resp = client.get_object(Bucket=settings.R2_BUCKET, Key=clean_key)
+            content_type = resp.get("ContentType", "image/jpeg")
+            body = resp["Body"].read()
+            # Save to local disk cache
+            try:
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+                local_path.write_bytes(body)
+            except Exception:
+                pass
+            return Response(
+                content=body,
+                media_type=content_type,
+                headers={"Cache-Control": "public, max-age=31536000"},
+            )
+        except Exception:
+            pass
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media not found")
+
+
 @router.post("/photo", status_code=status.HTTP_201_CREATED)
 async def upload_photo(
     request: Request,
@@ -77,7 +123,5 @@ async def upload_photo(
 
     filename = uuid4().hex + ALLOWED_TYPES[file.content_type]
     saved_url = upload_file(data, filename, file.content_type)
-    if saved_url.startswith("/"):
-        saved_url = f"{str(request.base_url).rstrip('/')}{saved_url}"
     return {"url": saved_url}
 
