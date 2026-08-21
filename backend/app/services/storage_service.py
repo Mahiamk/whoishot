@@ -66,8 +66,14 @@ def upload_file(file_bytes: bytes, filename: str, content_type: str = "applicati
             )
             if settings.R2_PUBLIC_URL:
                 return f"{settings.R2_PUBLIC_URL.rstrip('/')}/{clean_key}"
-            endpoint_clean = settings.R2_ENDPOINT.rstrip("/")
-            return f"{endpoint_clean}/{settings.R2_BUCKET}/{clean_key}"
+            # Also save to local cache if possible
+            try:
+                dest_path = MEDIA_DIR / clean_key
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                dest_path.write_bytes(file_bytes)
+            except Exception:
+                pass
+            return f"/media/{clean_key}"
         except Exception as err:
             logger.warning("R2 upload failed for %s, falling back to local storage: %s", clean_key, err)
 
@@ -81,16 +87,32 @@ def upload_file(file_bytes: bytes, filename: str, content_type: str = "applicati
 def fetch_file_bytes(url_or_path: str) -> bytes | None:
     """Read bytes for a file URL or path.
 
-    Reads straight off local disk for local files, or fetches over HTTP for R2/external URLs.
+    Reads straight off local disk for local files, or fetches from R2 client or HTTP.
     """
     if not url_or_path:
         return None
 
-    if "/media/" in url_or_path or url_or_path.startswith("media/"):
-        relative_filename = url_or_path.split("/media/", 1)[-1].lstrip("/")
-        local_file = MEDIA_DIR / relative_filename
-        if local_file.is_file():
-            return local_file.read_bytes()
+    clean_key = url_or_path
+    if "/media/" in url_or_path:
+        clean_key = url_or_path.split("/media/", 1)[-1].lstrip("/")
+    elif "r2.cloudflarestorage.com" in url_or_path:
+        parts = url_or_path.split("r2.cloudflarestorage.com/", 1)[-1].split("/", 1)
+        clean_key = parts[-1].lstrip("/")
+
+    # Check local disk
+    local_file = MEDIA_DIR / clean_key
+    if local_file.is_file():
+        return local_file.read_bytes()
+
+    # Check R2 client
+    client = get_r2_client()
+    settings = get_settings()
+    if client and settings.R2_BUCKET:
+        try:
+            resp = client.get_object(Bucket=settings.R2_BUCKET, Key=clean_key)
+            return resp["Body"].read()
+        except Exception:
+            pass
 
     if url_or_path.startswith("http://") or url_or_path.startswith("https://"):
         try:
@@ -98,7 +120,7 @@ def fetch_file_bytes(url_or_path: str) -> bytes | None:
             resp.raise_for_status()
             return resp.content
         except Exception as err:
-            logger.warning("Failed to fetch remote file bytes from %s: %s", url_or_path, err)
+            logger.warning("Could not fetch remote photo bytes from %s: %s", url_or_path, err)
             return None
 
     return None
