@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AtSign, Flag, Lock, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { CheckoutDialog } from '@/components/CheckoutDialog'
+import { Sparkline } from '@/components/Sparkline'
 
 import {
   AlertDialog,
@@ -40,9 +41,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/context/AuthContext'
-import { api } from '@/lib/api'
+import { api, mediaUrl } from '@/lib/api'
 import { bracketColor } from '@/lib/brackets'
-import type { ContestCriterion } from '@/lib/criteria'
+import { type ContestCriterion, DEFAULT_CRITERIA_SUGGESTIONS } from '@/lib/criteria'
 
 interface Profile {
   id: number
@@ -66,6 +67,9 @@ interface Profile {
   avg_score: number | null
   my_ratings: Record<string, number>
   contest_status: 'active' | 'ended'
+  contest_join_code?: string
+  contest_title?: string
+  criteria?: ContestCriterion[]
 }
 
 function initials(name: string): string {
@@ -182,15 +186,27 @@ export default function ContestantProfile() {
     retry: false,
   })
 
+  const contestLookup = profile?.contest_join_code || profile?.contest_id
+
   const { data: contestData } = useQuery({
-    queryKey: ['contest', profile?.contest_id],
-    queryFn: () => api<any>(`/contests/${profile?.contest_id}`),
-    enabled: !!profile?.contest_id,
+    queryKey: ['contest', contestLookup],
+    queryFn: () => api<any>(`/contests/${contestLookup}`),
+    enabled: !!contestLookup,
   })
 
-  const criteriaList: ContestCriterion[] = contestData?.criteria?.length
-    ? contestData.criteria
-    : Object.keys(profile?.criterion_averages || {}).map((k) => ({ key: k, label: k }))
+  const criteriaList: ContestCriterion[] = useMemo(() => {
+    if (profile?.criteria && profile.criteria.length > 0) {
+      return profile.criteria
+    }
+    if (contestData?.criteria && contestData.criteria.length > 0) {
+      return contestData.criteria
+    }
+    const avgKeys = Object.keys(profile?.criterion_averages || {})
+    if (avgKeys.length > 0) {
+      return avgKeys.map((k) => ({ key: k, label: k }))
+    }
+    return DEFAULT_CRITERIA_SUGGESTIONS
+  }, [profile, contestData])
 
   // Reset slider state when switching contestants so values never carry
   // over from a previously viewed profile.
@@ -201,7 +217,7 @@ export default function ContestantProfile() {
 
   useEffect(() => {
     if (profile && criteriaList.length > 0 && scores === null) {
-      const initial = defaultScores(profile.my_ratings, criteriaList)
+      const initial = defaultScores(profile.my_ratings || {}, criteriaList)
       setScores(initial)
       setBaseline(initial)
     }
@@ -335,7 +351,7 @@ export default function ContestantProfile() {
         <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
           <Avatar className="size-28 border-4" style={{ borderColor: color }}>
             {profile.photo_url && (
-              <AvatarImage src={profile.photo_url} alt={profile.name} />
+              <AvatarImage src={mediaUrl(profile.photo_url)} alt={profile.name} />
             )}
             <AvatarFallback
               className="text-2xl"
@@ -412,15 +428,29 @@ export default function ContestantProfile() {
       </Card>
 
       {!isOwnProfile && profile.contest_status === 'ended' && (
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle>Final scores for {profile.name.split(' ')[0]}</CardTitle>
-            <CardDescription>
-              This contest has ended — ratings are locked.
-              {hasRated ? ' Here are the scores you gave.' : ''}
-            </CardDescription>
+        <Card className="rounded-3xl border-border/70 shadow-lg bg-card overflow-hidden">
+          <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-4 space-y-1.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">Final Scores for {profile.name.split(' ')[0]}</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                This contest has ended — ratings are locked.
+                {hasRated ? ' Here are the scores you gave.' : ''}
+              </CardDescription>
+            </div>
+            {Object.keys(profile.criterion_averages).length > 0 && (
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Trait Curve</span>
+                <Sparkline
+                  data={Object.values(profile.criterion_averages)}
+                  labels={Object.keys(profile.criterion_averages)}
+                  width={140}
+                  height={34}
+                  color="#f59e0b"
+                />
+              </div>
+            )}
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="p-6 sm:p-8 pt-0 space-y-5">
             {criteriaList.map((crit) => {
               const criterion = crit.key || crit.label
               const value = scores[criterion] ?? 5
