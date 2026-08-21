@@ -4,6 +4,11 @@ export const BACKEND_BASE_URL = API_URL.replace(/\/api\/v1\/?$/, '')
 
 export function mediaUrl(path: string | null | undefined): string {
   if (!path) return ''
+  // If this is a raw Cloudflare R2 S3 endpoint URL, rewrite to backend /media proxy
+  if (path.includes('r2.cloudflarestorage.com')) {
+    const filename = path.split('/').pop()
+    return `${BACKEND_BASE_URL}/media/${filename}`
+  }
   if (path.startsWith('http://') || path.startsWith('https://')) return path
   return `${BACKEND_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`
 }
