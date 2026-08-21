@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { bracketColor } from '@/lib/brackets'
+import { mediaUrl } from '@/lib/api'
 
 export interface ShowcaseEntryData {
   is_demo: boolean
@@ -57,7 +58,7 @@ function LockedCard({
           <div className="relative aspect-4/5 w-full overflow-hidden bg-muted">
             {entry.blurred_thumb_url ? (
               <img
-                src={entry.blurred_thumb_url}
+                src={mediaUrl(entry.blurred_thumb_url)}
                 alt=""
                 aria-hidden="true"
                 className="h-full w-full scale-110 object-cover"
@@ -126,7 +127,7 @@ function DemoCard({
       <div className="relative aspect-4/5 w-full overflow-hidden bg-muted">
         {entry.photo_url ? (
           <img
-            src={entry.photo_url}
+            src={mediaUrl(entry.photo_url)}
             alt={entry.name ?? ''}
             className="h-full w-full object-cover"
           />
