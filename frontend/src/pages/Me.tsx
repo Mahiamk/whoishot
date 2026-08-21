@@ -4,10 +4,28 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, Check, CheckCircle2, Pencil, Sparkles, Trophy } from 'lucide-react'
+import {
+  BarChart3,
+  Bell,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Crown,
+  ExternalLink,
+  Flame,
+  History,
+  Pencil,
+  Sparkles,
+  Trophy,
+  Users,
+  Vote,
+  Zap,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { CheckoutDialog } from '@/components/CheckoutDialog'
-
+import { NormalDistributionCurve } from '@/components/NormalDistributionCurve'
+import { Sparkline } from '@/components/Sparkline'
 
 import {
   AlertDialog,
@@ -56,7 +74,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/context/AuthContext'
-import { api } from '@/lib/api'
+import { api, mediaUrl } from '@/lib/api'
 import { bracketColor } from '@/lib/brackets'
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
@@ -83,6 +101,18 @@ interface MyContestantEntry {
   vote_count: number
   avg_score: number | null
   rank: number | null
+  total_contestants: number
+  total_voters: number
+  total_ratings: number
+  bracket_contestants: number
+  bracket_scores: number[]
+  mean_score: number
+  std_dev: number
+  percentile: number | null
+  ends_at: string | null
+  is_paused?: boolean
+  is_deleted?: boolean
+  is_hidden?: boolean
 }
 
 interface PartnerIntroductionItem {
@@ -986,7 +1016,7 @@ function MyContestantCard({ entry }: { entry: MyContestantEntry }) {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <Avatar className="size-14 border-2 shrink-0" style={{ borderColor: color }}>
-              {entry.photo_url && <AvatarImage src={entry.photo_url} alt={entry.name} />}
+              {entry.photo_url && <AvatarImage src={mediaUrl(entry.photo_url)} alt={entry.name} />}
               <AvatarFallback style={{ backgroundColor: color, color: 'white' }} className="font-bold">
                 {initials(entry.name)}
               </AvatarFallback>
@@ -1151,6 +1181,354 @@ function MyContestsTab() {
       {data.map((entry) => (
         <MyContestantCard key={entry.contestant_id} entry={entry} />
       ))}
+    </div>
+  )
+}
+
+// --- Contest History Tab (Normal Distribution & Participation Metrics) ----
+
+function ContestHistoryCard({ entry }: { entry: MyContestantEntry }) {
+  const [expanded, setExpanded] = useState(true)
+  const color = bracketColor(entry.gender_category)
+  const isEnded = entry.contest_status === 'ended'
+  const rankedCriteria = Object.entries(entry.criterion_averages || {})
+  const traitValues = rankedCriteria.map(([_, v]) => v)
+  const traitLabels = rankedCriteria.map(([k, _]) => k)
+
+  return (
+    <Card className="rounded-3xl border border-border/70 shadow-lg bg-card overflow-hidden transition-all">
+      {/* Header */}
+      <div className="p-5 sm:p-7 border-b border-border/40 bg-gradient-to-r from-card via-card/80 to-muted/20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <Avatar className="size-14 border-2 shrink-0" style={{ borderColor: color }}>
+              {entry.photo_url && <AvatarImage src={mediaUrl(entry.photo_url)} alt={entry.name} />}
+              <AvatarFallback style={{ backgroundColor: color, color: 'white' }} className="font-bold">
+                {initials(entry.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  to={`/contest/${entry.contest_join_code}`}
+                  className="font-bold text-base sm:text-lg hover:underline text-foreground"
+                >
+                  {entry.contest_title}
+                </Link>
+                <Badge
+                  className={`text-[11px] font-semibold px-2 py-0.5 ${
+                    entry.is_deleted
+                      ? 'bg-destructive/15 text-destructive border border-destructive/30'
+                      : entry.is_paused
+                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                      : isEnded
+                      ? 'bg-muted text-muted-foreground border border-border/60'
+                      : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                  }`}
+                >
+                  {entry.is_deleted
+                    ? 'Archived (Deleted) 🗄️'
+                    : entry.is_paused
+                    ? 'Paused ⏸️'
+                    : isEnded
+                    ? 'Final Results 🏆'
+                    : 'Active Contest ⚡️'}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
+                <span className="font-mono">Code: {entry.contest_join_code}</span>
+                <span>•</span>
+                <span style={{ color }} className="font-semibold">
+                  {entry.gender_category === 'F' ? 'Ladies Bracket' : 'Gents Bracket'}
+                </span>
+                {entry.status !== 'active' && (
+                  <>
+                    <span>•</span>
+                    {statusBadge(entry.status)}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button asChild variant="outline" size="sm" className="h-9 px-3 rounded-xl text-xs font-semibold gap-1.5">
+              <Link to={`/contest/${entry.contest_join_code}/board`}>
+                <Trophy className="size-3.5 text-amber-500" />
+                <span>Leaderboard</span>
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="h-9 px-3 rounded-xl text-xs font-semibold gap-1.5">
+              <Link to={`/c/${entry.contestant_id}`}>
+                <ExternalLink className="size-3.5" />
+                <span>Profile</span>
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setExpanded(!expanded)}
+              aria-label={expanded ? 'Collapse analytics' : 'Expand analytics'}
+              className="h-9 w-9 rounded-xl"
+            >
+              {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Participation Stats Metrics Strip */}
+        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-3 rounded-2xl bg-muted/40 border border-border/40 flex flex-col">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
+              <Users className="size-3.5 text-primary" />
+              <span>Contestants</span>
+            </div>
+            <span className="text-lg sm:text-xl font-bold font-mono text-foreground">
+              {entry.total_contestants || entry.bracket_contestants || 1}
+            </span>
+            <span className="text-[10px] text-muted-foreground truncate">
+              {entry.bracket_contestants} in {entry.gender_category === 'F' ? 'Ladies' : 'Gents'} bracket
+            </span>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-muted/40 border border-border/40 flex flex-col">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
+              <Vote className="size-3.5 text-emerald-500" />
+              <span>People Joined</span>
+            </div>
+            <span className="text-lg sm:text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+              {entry.total_voters || 0}
+            </span>
+            <span className="text-[10px] text-muted-foreground truncate">
+              {entry.total_ratings || 0} ratings cast
+            </span>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-muted/40 border border-border/40 flex flex-col">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
+              <Trophy className="size-3.5 text-amber-500" />
+              <span>Your Placement</span>
+            </div>
+            <span className="text-lg sm:text-xl font-bold font-mono text-foreground">
+              {entry.rank != null ? `#${entry.rank}` : 'Unranked'}
+            </span>
+            <span className="text-[10px] text-muted-foreground truncate">
+              {entry.vote_count} votes received
+            </span>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-muted/40 border border-border/40 flex flex-col">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
+              <Flame className="size-3.5 text-pink-500" />
+              <span>Overall Score</span>
+            </div>
+            <span className="text-lg sm:text-xl font-bold font-mono text-pink-600 dark:text-pink-400">
+              {entry.avg_score != null ? entry.avg_score.toFixed(2) : '—'}
+            </span>
+            <span className="text-[10px] text-muted-foreground truncate">
+              Out of 10.0 pts
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Analytics & Normal Distribution Curve */}
+      {expanded && (
+        <CardContent className="p-5 sm:p-7 space-y-6">
+          {/* Normal Distribution Curve Placement Card */}
+          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
+              <div>
+                <h4 className="font-bold text-sm sm:text-base flex items-center gap-2">
+                  <BarChart3 className="size-4 text-violet-500" />
+                  <span>Normal Distribution & Relative Standing</span>
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Bell curve distribution of all contestant scores in your bracket
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <Badge variant="outline" className="text-[11px] font-medium">
+                  μ = {entry.mean_score.toFixed(2)}
+                </Badge>
+                <Badge variant="outline" className="text-[11px] font-medium">
+                  σ = ±{entry.std_dev.toFixed(2)}
+                </Badge>
+              </div>
+            </div>
+
+            {/* D3 Normal Distribution SVG Curve */}
+            <div className="w-full flex justify-center py-2 overflow-x-auto">
+              <NormalDistributionCurve
+                score={entry.avg_score}
+                mean={entry.mean_score}
+                stdDev={entry.std_dev}
+                percentile={entry.percentile}
+                bracketScores={entry.bracket_scores}
+                width={420}
+                height={170}
+              />
+            </div>
+          </div>
+
+          {/* Criteria Trait Breakdown with Sparkline */}
+          {rankedCriteria.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-xs sm:text-sm uppercase tracking-wider text-muted-foreground">
+                  Trait Ratings Performance ({rankedCriteria.length})
+                </h4>
+                <Sparkline
+                  data={traitValues}
+                  labels={traitLabels}
+                  width={130}
+                  height={32}
+                  color={color}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {rankedCriteria.map(([criterion, val]) => (
+                  <div key={criterion} className="p-2.5 rounded-xl bg-muted/40 border border-border/40 text-xs">
+                    <div className="flex items-center justify-between font-medium mb-1">
+                      <span className="capitalize text-muted-foreground truncate">{criterion}</span>
+                      <span className="font-bold font-mono">{val.toFixed(1)}</span>
+                    </div>
+                    <Progress
+                      value={val * 10}
+                      className="h-1.5 [&>div]:bg-primary"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+function ContestHistoryTab() {
+  const [filter, setFilter] = useState<'all' | 'active' | 'ended'>('all')
+  const { data, isLoading } = useQuery({
+    queryKey: ['my-contestants'],
+    queryFn: () => api<MyContestantEntry[]>('/users/me/contestants'),
+  })
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[0, 1].map((i) => (
+          <Skeleton key={i} className="h-64 w-full rounded-3xl" />
+        ))}
+      </div>
+    )
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <Card className="rounded-3xl border-dashed border-2">
+        <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+          <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+            <History className="size-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-base">No Contest History</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+              You haven't participated in any contests yet. Join a contest to unlock your normal distribution placement and analytics!
+            </p>
+          </div>
+          <Button asChild className="h-11 min-h-[44px] px-6 text-sm font-semibold rounded-xl bg-gradient-to-r from-violet-600 to-pink-600">
+            <Link to="/">Explore Contests</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const filtered = data.filter((entry) => {
+    if (filter === 'active') return entry.contest_status === 'active'
+    if (filter === 'ended') return entry.contest_status === 'ended'
+    return true
+  })
+
+  const totalVotesReceived = data.reduce((acc, e) => acc + (e.vote_count || 0), 0)
+  const highestRank = Math.min(...data.map((e) => e.rank || 999).filter((r) => r !== 999))
+
+  return (
+    <div className="space-y-6">
+      {/* Contest History Overview Summary Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <Card className="rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/60 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs font-semibold mb-1">
+            <Trophy className="size-4 text-amber-500" />
+            <span>Contests Participated</span>
+          </div>
+          <span className="text-2xl font-black font-mono text-foreground">
+            {data.length}
+          </span>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {data.filter((e) => e.contest_status === 'active').length} active · {data.filter((e) => e.contest_status === 'ended').length} completed
+          </p>
+        </Card>
+
+        <Card className="rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/60 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs font-semibold mb-1">
+            <Crown className="size-4 text-amber-500" />
+            <span>Best Rank Achieved</span>
+          </div>
+          <span className="text-2xl font-black font-mono text-amber-500">
+            {highestRank !== 999 && !isNaN(highestRank) ? `#${highestRank}` : '—'}
+          </span>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Across all brackets
+          </p>
+        </Card>
+
+        <Card className="col-span-2 sm:col-span-1 rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/60 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs font-semibold mb-1">
+            <Zap className="size-4 text-emerald-500" />
+            <span>Total Votes Earned</span>
+          </div>
+          <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+            {totalVotesReceived}
+          </span>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Verified ratings received
+          </p>
+        </Card>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex items-center justify-between gap-2">
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full sm:w-auto">
+          <TabsList className="h-10 p-1 rounded-xl bg-muted/60 border border-border/40">
+            <TabsTrigger value="all" className="h-8 text-xs font-semibold rounded-lg px-3">
+              All ({data.length})
+            </TabsTrigger>
+            <TabsTrigger value="active" className="h-8 text-xs font-semibold rounded-lg px-3">
+              Active ({data.filter((e) => e.contest_status === 'active').length})
+            </TabsTrigger>
+            <TabsTrigger value="ended" className="h-8 text-xs font-semibold rounded-lg px-3">
+              Ended ({data.filter((e) => e.contest_status === 'ended').length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Contests History List */}
+      {filtered.length === 0 ? (
+        <Card className="rounded-3xl border-dashed border p-8 text-center text-sm text-muted-foreground">
+          No {filter} contests found in your history.
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map((entry) => (
+            <ContestHistoryCard key={entry.contestant_id} entry={entry} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1473,6 +1851,10 @@ export default function Me() {
           <TabsTrigger value="contests" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
             My contests
           </TabsTrigger>
+          <TabsTrigger value="history" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium gap-1.5">
+            <History className="size-3.5 hidden sm:inline-block" />
+            <span>History</span>
+          </TabsTrigger>
           <TabsTrigger value="notices" className="flex-1 h-9 min-h-[36px] text-xs sm:text-sm font-medium">
             Notices
             {totalPending > 0 && (
@@ -1487,6 +1869,9 @@ export default function Me() {
         </TabsContent>
         <TabsContent value="contests">
           <MyContestsTab />
+        </TabsContent>
+        <TabsContent value="history">
+          <ContestHistoryTab />
         </TabsContent>
         <TabsContent value="notices">
           <NoticesTab />
