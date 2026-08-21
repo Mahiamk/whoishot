@@ -32,6 +32,7 @@ from app.routers.contests import (
 from app.routers.media import generate_blurred_thumb
 from app.security import verify_password
 from app.schemas import (
+    ContestCriterionRead,
     ContestantCreate,
     ContestantProfile,
     ContestantRead,
@@ -70,6 +71,14 @@ def join_contest(
     current_user: User = Depends(get_current_user),
 ) -> Contestant:
     contest = get_contest_or_404(db, join_code)
+    if contest.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="This contest has been deleted"
+        )
+    if contest.is_paused:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="This contest is currently paused by the creator"
+        )
     if contest.status == ContestStatus.ended:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="This contest has ended"
@@ -326,6 +335,9 @@ def get_contestant_profile(
         avg_score=avg_score,
         my_ratings=my_ratings,
         contest_status=contest.status,
+        contest_join_code=contest.join_code,
+        contest_title=contest.title,
+        criteria=[ContestCriterionRead.model_validate(c) for c in contest.criteria],
     )
 
 
@@ -355,6 +367,16 @@ def upsert_ratings(
             detail="You cannot rate yourself",
         )
     contest = check_contest_expiry(db, contestant.contest)
+    if contest.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This contest has been deleted — ratings are closed",
+        )
+    if contest.is_paused:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This contest is currently paused by the creator — ratings are paused",
+        )
     if contest.status == ContestStatus.ended:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
