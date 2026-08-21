@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Copy, Sparkles, Trophy } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, Copy, EyeOff, Pause, Settings, Sparkles, Trophy } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,8 +16,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Countdown } from '@/components/Countdown'
 import { ShowcaseCard, type ShowcaseEntryData } from '@/components/ShowcaseCard'
+import { ManageContestModal } from '@/components/ManageContestModal'
 import { useAuth } from '@/context/AuthContext'
-import { api, ApiError, rememberContest } from '@/lib/api'
+import { api, ApiError, mediaUrl, rememberContest } from '@/lib/api'
 import { FEMALE, GENERAL, MALE } from '@/lib/brackets'
 
 interface ShowcaseDetail {
@@ -30,6 +31,9 @@ interface ShowcaseDetail {
   allowed_email_domain: string | null
   ends_at: string
   status: 'active' | 'ended'
+  is_paused?: boolean
+  is_deleted?: boolean
+  is_hidden?: boolean
   F: ShowcaseEntryData[]
   M: ShowcaseEntryData[]
 }
@@ -39,7 +43,12 @@ interface ContestDetail {
   join_code: string
   title: string
   description: string | null
+  creator_id: number
   is_active: boolean
+  is_paused: boolean
+  is_hidden: boolean
+  is_deleted: boolean
+  deleted_at: string | null
   ends_at: string
   status: 'active' | 'ended'
   allowed_email_domain: string | null
@@ -102,7 +111,7 @@ function ContestantGrid({
             <div className="aspect-4/5 w-full overflow-hidden bg-muted">
               {c.photo_url ? (
                 <img
-                  src={c.photo_url}
+                  src={mediaUrl(c.photo_url)}
                   alt={c.name}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
@@ -164,6 +173,8 @@ function PreviewGrid({
 export default function Contest() {
   const { joinCode } = useParams()
   const { user, loading } = useAuth()
+  const queryClient = useQueryClient()
+  const [manageOpen, setManageOpen] = useState(false)
 
   useEffect(() => {
     if (joinCode) rememberContest(joinCode)
@@ -199,6 +210,9 @@ export default function Contest() {
 
   const isContestant =
     !!user && !!contestants?.some((c) => c.user_id === user.id)
+
+  const isCreator =
+    !!user && !!contest && (contest.creator_id === user.id || user.role === 'admin')
 
   async function copyJoinCode() {
     if (!contest) return
@@ -457,15 +471,57 @@ export default function Contest() {
         <Badge className="bg-amber-500 text-white hover:bg-amber-500 text-xs py-1 px-2.5">
           {contest.rating_count} ratings
         </Badge>
-        {contest.allowed_email_domain && (
-          <Badge variant="outline" className="text-xs py-1 px-2.5">@{contest.allowed_email_domain} only</Badge>
+        {contest.is_hidden && isCreator && (
+          <Badge variant="secondary" className="gap-1 text-xs py-1 px-2.5 text-muted-foreground">
+            <EyeOff className="size-3" /> Hidden from Explore
+          </Badge>
         )}
-        <Button asChild variant="outline" size="sm" className="ml-auto h-10 min-h-[44px] px-3.5 font-semibold text-xs sm:text-sm rounded-xl">
-          <Link to={`/contest/${joinCode}/board`}>
-            <Trophy className="size-4 text-amber-500" /> Leaderboard
-          </Link>
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          {isCreator && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setManageOpen(true)}
+              className="h-10 min-h-[44px] px-3.5 font-semibold text-xs sm:text-sm rounded-xl gap-1.5 border-primary/40 hover:bg-primary/5"
+            >
+              <Settings className="size-4 text-primary" /> Manage Contest
+            </Button>
+          )}
+          <Button asChild variant="outline" size="sm" className="h-10 min-h-[44px] px-3.5 font-semibold text-xs sm:text-sm rounded-xl">
+            <Link to={`/contest/${joinCode}/board`}>
+              <Trophy className="size-4 text-amber-500" /> Leaderboard
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      {contest.is_deleted && (
+        <Card className="mb-6 rounded-2xl border-destructive/40 bg-destructive/10 p-4 text-destructive">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="size-6 shrink-0" />
+            <div>
+              <h4 className="font-bold text-sm sm:text-base">Contest Deleted (Archived)</h4>
+              <p className="text-xs text-muted-foreground">
+                This contest was deleted by the organizer. Voting and new registrations are closed. All participant scores and rank placements are permanently preserved in Contest History.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {contest.is_paused && !contest.is_deleted && (
+        <Card className="mb-6 rounded-2xl border-amber-500/40 bg-amber-500/10 p-4 text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-3">
+            <Pause className="size-6 shrink-0" />
+            <div>
+              <h4 className="font-bold text-sm sm:text-base">Contest Paused</h4>
+              <p className="text-xs text-muted-foreground">
+                This contest is currently paused by the organizer. Ratings and registrations are temporarily frozen until resumed.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
 
       {contest.entry_fee_cents > 0 && (
@@ -600,6 +656,18 @@ export default function Contest() {
           <ContestantGrid contestants={gents} joinCode={contest.join_code} />
         </TabsContent>
       </Tabs>
+
+      {isCreator && (
+        <ManageContestModal
+          contest={contest}
+          open={manageOpen}
+          onOpenChange={setManageOpen}
+          onUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['contest', joinCode] })
+            queryClient.invalidateQueries({ queryKey: ['contestants', joinCode] })
+          }}
+        />
+      )}
     </main>
   )
 }
