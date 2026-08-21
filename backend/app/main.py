@@ -112,10 +112,9 @@ def create_app() -> FastAPI:
         }
 
     app.include_router(api_router)
+    app.include_router(media.router)
 
     MEDIA_DIR.mkdir(exist_ok=True)
-    app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
-
     return app
 
 
