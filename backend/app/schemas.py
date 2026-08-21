@@ -215,6 +215,10 @@ class ContestRead(BaseModel):
     creator_id: int
     is_active: bool
     is_showcase_public: bool
+    is_hidden: bool = False
+    is_paused: bool = False
+    is_deleted: bool = False
+    deleted_at: datetime | None = None
     ends_at: datetime
     status: ContestStatus
     allowed_email_domain: str | None
@@ -247,6 +251,7 @@ class PopularContestItem(BaseModel):
     allowed_email_domain: str | None
     ends_at: datetime
     status: ContestStatus
+    is_paused: bool = False
 
 
 class ShowcaseEntry(BaseModel):
@@ -272,6 +277,9 @@ class ShowcaseRead(BaseModel):
     allowed_email_domain: str | None
     ends_at: datetime
     status: ContestStatus
+    is_paused: bool = False
+    is_deleted: bool = False
+    is_hidden: bool = False
     F: list[ShowcaseEntry]
     M: list[ShowcaseEntry]
 
@@ -304,6 +312,8 @@ class LeaderboardRead(BaseModel):
     criterion: str
     ends_at: datetime
     status: ContestStatus
+    is_paused: bool = False
+    is_deleted: bool = False
     podium: list[LeaderboardEntry]
     others: list[LeaderboardOther]
     me: MyRank | None
@@ -393,6 +403,9 @@ class ContestantProfile(ContestantRead):
     avg_score: float | None
     my_ratings: dict[str, int]
     contest_status: ContestStatus
+    contest_join_code: str = ""
+    contest_title: str = ""
+    criteria: list[ContestCriterionRead] = []
 
 
 class MyContestantEntry(BaseModel):
@@ -416,6 +429,18 @@ class MyContestantEntry(BaseModel):
     vote_count: int
     avg_score: float | None
     rank: int | None
+    total_contestants: int = 0
+    total_voters: int = 0
+    total_ratings: int = 0
+    bracket_contestants: int = 0
+    bracket_scores: list[float] = []
+    mean_score: float = 5.0
+    std_dev: float = 1.0
+    percentile: float | None = None
+    ends_at: datetime | None = None
+    is_paused: bool = False
+    is_deleted: bool = False
+    is_hidden: bool = False
 
 
 
