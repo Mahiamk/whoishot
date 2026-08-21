@@ -197,6 +197,8 @@ def generate_join_code(db: Session, title: str) -> str:
 
 def get_contest_or_404(db: Session, join_code: str) -> Contest:
     contest = db.query(Contest).filter(Contest.join_code == join_code).first()
+    if contest is None and join_code.isdigit():
+        contest = db.query(Contest).filter(Contest.id == int(join_code)).first()
     if contest is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Contest not found"
@@ -403,6 +405,85 @@ def update_contest_criteria(
     return new_criteria
 
 
+@router.patch("/{id_or_code}/pause", response_model=ContestWithCounts)
+def toggle_pause_contest(
+    id_or_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ContestWithCounts:
+    contest = get_contest_or_404(db, id_or_code)
+    if contest.creator_id != current_user.id and current_user.role != UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the contest creator can pause or resume this contest",
+        )
+    if contest.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot pause a deleted contest",
+        )
+    contest.is_paused = not contest.is_paused
+    db.commit()
+    db.refresh(contest)
+    return get_contest(contest.join_code, db, current_user)
+
+
+@router.patch("/{id_or_code}/hide", response_model=ContestWithCounts)
+def toggle_hide_contest(
+    id_or_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ContestWithCounts:
+    contest = get_contest_or_404(db, id_or_code)
+    if contest.creator_id != current_user.id and current_user.role != UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the contest creator can hide or unhide this contest",
+        )
+    contest.is_hidden = not contest.is_hidden
+    db.commit()
+    db.refresh(contest)
+    return get_contest(contest.join_code, db, current_user)
+
+
+@router.delete("/{id_or_code}")
+def delete_contest(
+    id_or_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    contest = get_contest_or_404(db, id_or_code)
+    if contest.creator_id != current_user.id and current_user.role != UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the contest creator can delete this contest",
+        )
+    contest.is_deleted = True
+    contest.deleted_at = utcnow()
+    contest.is_active = False
+    db.commit()
+    return {"ok": True, "message": "Contest deleted and preserved in history"}
+
+
+@router.post("/{id_or_code}/restore", response_model=ContestWithCounts)
+def restore_contest(
+    id_or_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ContestWithCounts:
+    contest = get_contest_or_404(db, id_or_code)
+    if contest.creator_id != current_user.id and current_user.role != UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the contest creator can restore this contest",
+        )
+    contest.is_deleted = False
+    contest.deleted_at = None
+    contest.is_active = (as_aware(contest.ends_at) > utcnow())
+    db.commit()
+    db.refresh(contest)
+    return get_contest(contest.join_code, db, current_user)
+
 
 # NOTE: must be registered before GET /{join_code}, or "popular" would be
 # captured as a join code.
@@ -416,6 +497,8 @@ def popular_contests(db: Session = Depends(get_db)) -> list[PopularContestItem]:
         .filter(
             Contest.is_showcase_public == True,  # noqa: E712
             Contest.status == ContestStatus.active,
+            Contest.is_deleted == False,  # noqa: E712
+            Contest.is_hidden == False,  # noqa: E712
         )
         .all()
     )
@@ -622,6 +705,8 @@ def get_leaderboard(
         criterion=criterion,
         ends_at=contest.ends_at,
         status=contest.status,
+        is_paused=contest.is_paused,
+        is_deleted=contest.is_deleted,
         podium=podium,
         others=others,
         me=me,
@@ -661,34 +746,30 @@ def get_showcase(
                 gender_category=contestant.gender_category,
                 name=contestant.name,
                 photo_url=contestant.photo_url,
+                score=5.0,
             )
         )
 
-    averages = contestant_averages(db, contest.id)  # already excludes is_demo
-    real_contestants = (
-        db.query(Contestant)
-        .join(User, Contestant.user_id == User.id)
-        .filter(
-            Contestant.id.in_(averages.keys()),
-            Contestant.status == ContestantStatus.active,
-            Contestant.is_demo == False,  # noqa: E712
-            User.is_banned == False,  # noqa: E712
-        )
-        .all()
+    ratings_count = (
+        db.query(func.count(Rating.id))
+        .join(Contestant, Rating.contestant_id == Contestant.id)
+        .filter(Contestant.contest_id == contest.id)
+        .scalar()
     )
-    ranked: dict[str, list[tuple[ShowcaseEntry, float]]] = {"F": [], "M": []}
-    for contestant in real_contestants:
-        score = averages[contestant.id]
-        entry = ShowcaseEntry(
-            is_demo=False,
-            gender_category=contestant.gender_category,
-            blurred_thumb_url=blurred_thumb_url(request, contestant.id),
-            score=score,
-        )
-        ranked[contestant.gender_category.value].append((entry, score))
-    for gender_key, pairs in ranked.items():
-        pairs.sort(key=lambda pair: pair[1], reverse=True)
-        by_gender[gender_key].extend(entry for entry, _ in pairs[:SHOWCASE_TOP_N])
+    if ratings_count and ratings_count > 0:
+        for g in (Gender.F, Gender.M):
+            ranked = rank_contestants(db, contest.id, g, "overall")
+            for c_dict, score in ranked[:4]:
+                contestant_id = c_dict["contestant_id"]
+                thumb = blurred_thumb_url(request, contestant_id)
+                by_gender[g.value].append(
+                    ShowcaseEntry(
+                        is_demo=False,
+                        gender_category=g,
+                        blurred_thumb_url=thumb,
+                        score=score,
+                    )
+                )
 
     # Same counting rules as the authenticated contest detail: active,
     # non-banned, real contestants only (the User join excludes demo rows,
@@ -717,6 +798,9 @@ def get_showcase(
         allowed_email_domain=contest.allowed_email_domain,
         ends_at=contest.ends_at,
         status=contest.status,
+        is_paused=contest.is_paused,
+        is_deleted=contest.is_deleted,
+        is_hidden=contest.is_hidden,
         F=by_gender["F"],
         M=by_gender["M"],
     )
